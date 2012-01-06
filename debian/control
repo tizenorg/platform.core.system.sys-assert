@@ -1,0 +1,19 @@
+Source: sys-assert
+Section: devel
+Priority: extra
+Maintainer: Youngjoo Park <yjoo93.park@samsung.com>, Youngkyeong Yun <yk.yun@samsung.com>
+Uploaders: Jeesun Kim <iamjs.kim@samsung.com> Youngkyeong Yun <yk.yun@samsung.com>
+Build-Depends: debhelper (>= 5), autotools-dev, libappcore-efl-dev, libheynoti-dev, libelm-dev, libslp-utilx-dev, libui-gadget-dev, libbundle-dev, libglib2.0-dev, libslp-setting-dev, libsqlite3-dev, libslp-pm-dev, dlog-dev, libslp-sysman-dev
+Standards-Version: 0.1.0
+
+Package: libsys-assert-0
+Section: libs
+Architecture: any
+Depends: 
+Description: libsys-assert (shared object)
+
+Package: sys-assert-0-dbg
+Section: debug
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libsys-assert-0
+Description: libsys-assert dbg package

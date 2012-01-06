@@ -1,0 +1,14 @@
+@PREFIX@/bin/blue-screen
+@PREFIX@/share/edje/*
+#@PREFIX@/share/edje/blue-screen.edj
+#@PREFIX@/share/edje/bs-viewer.edj
+@PREFIX@/bin/lockupinfo
+@PREFIX@/bin/lockupinfo.sh
+#@PREFIX@/bin/crashuploader
+/opt/share/applications/*
+#/opt/share/applications/org.tizen.bs-viewer.desktop
+/opt/apps/org.tizen.blue-screen/data
+/opt/apps/org.tizen.blue-screen/bin/bs-viewer
+/opt/apps/org.tizen.blue-screen/res/images/*
+/opt/apps/org.tizen.blue-screen/res/icons/default/small/org.tizen.blue-screen.png
+#/opt/bs/debuglevel/*

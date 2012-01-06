@@ -1,0 +1,46 @@
+#!/bin/sh
+# if [ ${USER} == "root" ]
+# then
+   # Change file owner
+   # 1. libraries
+   # chown root:root /usr/lib/libsys-assert.so
+   # 2. executables
+   # 3. configurations
+   # 4. profile script
+   # chown root:root /etc/profile.d/setup_bs.sh
+
+#fi
+# Change file permissions
+# 1. libraries
+# chmod 644 /usr/lib/libsys-assert.so
+# 2. executables
+# 3. configurations
+# 4. booting script
+mkdir -p /opt/bs/core
+chown root:5000 /opt/bs/core
+chmod 775 /opt/bs/core
+
+mkdir -p /opt/share/hidden_storage/SLP_debug
+chown root:5000 /opt/share/hidden_storage/SLP_debug
+chmod 755 /opt/share/hidden_storage
+chmod 775 /opt/share/hidden_storage/SLP_debug
+
+touch /opt/etc/.debugmode
+
+# added below for dbg package
+DBG_DIR=/home/developer/sdk_tools/usr/lib/debug
+
+if [ -L /usr/lib/debug ]
+then
+	echo "already exists"
+	exit
+fi
+
+mkdir -p ${DBG_DIR}
+if [ -d /usr/lib/debug ]
+then
+	cp -a /usr/lib/debug/* ${DBG_DIR}
+	rm -rf /usr/lib/debug
+fi
+
+ln -sf ${DBG_DIR} /usr/lib/debug

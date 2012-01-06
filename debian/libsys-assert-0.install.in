@@ -1,0 +1,6 @@
+@PREFIX@/bin/lockupinfo
+@PREFIX@/bin/lockupinfo.sh
+
+@PREFIX@/lib/libsys-assert*.so*
+/etc/udev/rules.d/92-rb-dump.rules
+/opt/etc/.debugmode
