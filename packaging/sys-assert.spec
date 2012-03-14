@@ -1,46 +1,23 @@
 Name:       sys-assert
-Summary:    Blue screen and bs-viewer ui
-Version:    0.2.89
+Summary:    System Assert
+Version:	0.3.0
 Release:    1
 Group:      TBD
 License:    LGPL
 Source0:    %{name}-%{version}.tar.gz
 
-BuildRequires:  pkgconfig(appcore-efl)
-BuildRequires:  pkgconfig(heynoti)
-BuildRequires:  pkgconfig(elementary)
 BuildRequires:  pkgconfig(utilX)
-BuildRequires:  pkgconfig(ui-gadget)
-BuildRequires:  pkgconfig(bundle)
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(vconf)
-BuildRequires:  pkgconfig(dnet)
 BuildRequires:  pkgconfig(sqlite3)
 BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(pmapi)
 BuildRequires:  pkgconfig(libcurl)
 BuildRequires:  cmake
-BuildRequires:  edje-tools
 
 %description
-blue screen and bs-viewer ui
+System Assert
 
-%package -n org.tizen.blue-screen
-Summary:    blue screen and bs-viewer ui
-Group:      TO_BE/FILLED
-
-%description -n org.tizen.blue-screen
-blue screen and bs-viewer ui.
-
-%package -n libsys-assert
-Summary:    libsys-assert (shared object)
-Group:      TO_BE/FILLED
-Requires:   %{name} = %{version}-%{release}
-Requires(post): /sbin/ldconfig
-Requires(postun): /sbin/ldconfig
-
-%description -n libsys-assert
-libsys-assert (shared object).
 
 %prep
 %setup -q
@@ -52,26 +29,48 @@ export CFLAGS+=" -fPIC"
 %endif
 
 cmake . -DCMAKE_INSTALL_PREFIX=/usr
-
 make %{?jobs:-j%jobs}
 
 %install
-rm -rf %{buildroot}
-
 %make_install
 
-%post -n libsys-assert -p /sbin/ldconfig
+mkdir -p %{buildroot}/opt/bs/core
+mkdir -p %{buildroot}/opt/share/hidden_storage/SLP_debug
+touch %{buildroot}/opt/etc/.debugmode
 
-%postun -n libsys-assert -p /sbin/ldconfig
+%post -p /sbin/ldconfig
+chown root:5000 /opt/bs/core
+chmod 775 /opt/bs/core
 
-%files
+chown root:5000 /opt/share/hidden_storage/SLP_debug
+chmod 755 /opt/share/hidden_storage
+chmod 775 /opt/share/hidden_storage/SLP_debug
 
-%files -n org.tizen.blue-screen
+
+# added below for dbg package
+DBG_DIR=/home/developer/sdk_tools/usr/lib/debug
+
+if [ -L /usr/lib/debug ]
+then
+	echo "already exists"
+	exit
+fi
+
+mkdir -p ${DBG_DIR}
+if [ -d /usr/lib/debug ]
+then
+	cp -a /usr/lib/debug/* ${DBG_DIR}
+	rm -rf /usr/lib/debug
+fi
+
+ln -sf ${DBG_DIR} /usr/lib/debug
+
+%postun -p /sbin/ldconfig
+
+%files 
 /usr/bin/*
-/usr/share/*
-/opt/share/*
-/opt/apps/*
-
-%files -n libsys-assert
 /usr/lib/*.so*
-
+/etc/udev/rules.d/*
+%dir /opt/bs/core
+%dir /opt/share/hidden_storage/SLP_debug
+%config(missingok) /opt/etc/.debugmode
