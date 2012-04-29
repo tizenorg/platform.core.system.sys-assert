@@ -1,8 +1,7 @@
-
 /*
  *  LOCKUPINFO
  *
- * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+ * Copyright (c) 2000 - 2012 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Contact: Jeesun Kim <iamjs.kim@samsung.com>
  * 
