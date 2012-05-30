@@ -5,6 +5,7 @@ Release:    1
 Group:      TBD
 License:    Apache_2.0
 Source0:    %{name}-%{version}.tar.gz
+Source1001: packaging/sys-assert.manifest 
 
 BuildRequires:  pkgconfig(appcore-efl)
 BuildRequires:  pkgconfig(heynoti)
@@ -28,6 +29,7 @@ libsys-assert (shared object).
 %setup -q
 
 %build
+cp %{SOURCE1001} .
 export CFLAGS+=" -fPIC"
 %ifarch %{arm}
     export CFLAGS+=" -DTARGET"
@@ -47,6 +49,7 @@ rm -rf %{buildroot}
 %postun -p /sbin/ldconfig
 
 %files 
+%manifest sys-assert.manifest
 /usr/bin/*
 /usr/lib/*.so*
 /etc/udev/rules.d/92-rb-dump.rules
