@@ -56,8 +56,7 @@ extern "C" {
 	static int trace_symbols(void *const *array, int size,
 				 struct addr_node *start, int csfd);
 
-	static struct addr_node *get_addr_list_from_maps(int fd);
-
+	static struct addr_node *get_addr_list_from_maps(int mapsfd);
 	static void print_node_to_file(struct addr_node *start, int fd);
 
 #ifdef BTDEBUG
