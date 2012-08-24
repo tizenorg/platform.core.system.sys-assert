@@ -1,3 +1,4 @@
+
 /*
  *  LOCKUPINFO
  *
@@ -281,7 +282,7 @@ int main()
 			"/usr/bin/screenshot bmp", cbuf, "slp_screenshot.bmp");
 	system(cbuf);
 
-	snprintf(cbuf, sizeof(cbuf), "%s > %s/%s",
+	snprintf(cbuf, sizeof(cbuf), "%s> %s/%s",
 			"xinfo -topvwins 2", dbuf, "xinfo_topvwins.txt");
 	system(cbuf);
 
@@ -312,21 +313,6 @@ int main()
 	snprintf(cbuf, sizeof(cbuf), "%s %s",
 			"cp /opt/var/log/nandlog_*", dbuf);
 	system(cbuf);
-
-	/* launch bluescreen */
-	pid_t bs_pid;
-
-	if ((bs_pid = fork()) < 0) {
-		fprintf(stderr, "[lockupinfo] fork_error\n");
-
-	} else if (bs_pid == 0) {
-		if (execl
-		    ("/usr/bin/blue-screen", "blue-screen", ibuf,
-		     "LOCKUPINFO", (char *)0) < 0) {
-			fprintf(stderr, "[lockupinfo] exec_error\n");
-		}
-		_exit(1);	/*/ shouldn't get here */
-	}
 
 	fprintf(stderr, "[lockupinfo] exit\n");
 	return 0;

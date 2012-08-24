@@ -1,23 +1,14 @@
+#sbs-git:slp/pkgs/s/sys-assert sys-assert 0.3.0 8c6fe2f2b76743849583c95c96073692877ab541
 Name:       sys-assert
-Summary:    System Assert
-Version:	0.3.0
-Release:    1
+Summary:    libsys-assert (shared object).
+Version:    0.3.1
+Release:    0
 Group:      TBD
-License:    Apache_2.0
+License:    LGPL
 Source0:    %{name}-%{version}.tar.gz
 
-BuildRequires:  pkgconfig(appcore-efl)
-BuildRequires:  pkgconfig(heynoti)
-BuildRequires:  pkgconfig(elementary)
-BuildRequires:  pkgconfig(utilX)
-BuildRequires:  pkgconfig(ui-gadget)
-BuildRequires:  pkgconfig(bundle)
 BuildRequires:  pkgconfig(glib-2.0)
-BuildRequires:  pkgconfig(vconf)
-BuildRequires:  pkgconfig(sqlite3)
 BuildRequires:  pkgconfig(dlog)
-BuildRequires:  pkgconfig(pmapi)
-BuildRequires:  pkgconfig(libcurl)
 BuildRequires:  cmake
 BuildRequires:  edje-tools
 
@@ -42,13 +33,26 @@ rm -rf %{buildroot}
 
 %make_install
 
-%post -p /sbin/ldconfig
+%post
+/sbin/ldconfig
+mkdir -p /opt/bs/core
+chown 0:5000 /opt/bs/core
+chmod 775 /opt/bs/core
+mkdir -p /opt/share/hidden_storage/SLP_debug
+chown 0:5000 /opt/share/hidden_storage
+chmod 775 /opt/share/hidden_storage
+chown 0:5000 /opt/share/hidden_storage/SLP_debug
+chmod 775 /opt/share/hidden_storage/SLP_debug
+chmod +x /etc/opt/init/sys-assert.init.sh
+/etc/opt/init/sys-assert.init.sh
 
-%postun -p /sbin/ldconfig
-
-%files 
+%files
 /usr/bin/*
 /usr/lib/*.so*
 /etc/udev/rules.d/92-rb-dump.rules
-/opt/etc/.debugmode
+/etc/opt/init/sys-assert.init.sh
+/usr/opt/etc/.debugmode
+/usr/bin/lockupinfo
+/usr/bin/lockupinfo.sh
+/usr/lib/libsys-assert.so
 

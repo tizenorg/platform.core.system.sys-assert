@@ -16,14 +16,40 @@
 # 2. executables
 # 3. configurations
 # 4. booting script
-mkdir -p /opt/bs/core
-chown root:5000 /opt/bs/core
-chmod 775 /opt/bs/core
 
-mkdir -p /opt/share/hidden_storage/SLP_debug
-chown root:5000 /opt/share/hidden_storage/SLP_debug
-chmod 755 /opt/share/hidden_storage
-chmod 775 /opt/share/hidden_storage/SLP_debug
+if [ -d /opt/bs ]
+then
+	if [ -d /opt/bs/core ]
+	then
+		echo "/opt/bs/core exists"
+	else
+		mkdir /opt/bs/core
+		chown root:5000 /opt/bs/core
+		chmod 775 /opt/bs/core
+	fi
+else
+	mkdir -p /opt/bs/core
+	chown root:5000 /opt/bs/core
+	chmod 775 /opt/bs/core
+fi
+
+if [ -d /opt/share/hidden_storage ]
+then
+	if [ -d /opt/share/hidden_storage/SLP_debug ]
+	then
+		echo "/opt/share/hidden_storage/SLP_debug exists"
+	else
+		mkdir /opt/share/hidden_storage/SLP_debug
+		chown root:5000 /opt/share/hidden_storage/SLP_debug
+		chmod 775 /opt/share/hidden_storage/SLP_debug
+	fi
+else
+	mkdir -p /opt/share/hidden_storage/SLP_debug
+	chown root:5000 /opt/share/hidden_storage
+	chmod 775 /opt/share/hidden_storage
+	chown root:5000 /opt/share/hidden_storage/SLP_debug
+	chmod 775 /opt/share/hidden_storage/SLP_debug
+fi
 
 touch /opt/etc/.debugmode
 

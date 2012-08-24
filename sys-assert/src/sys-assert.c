@@ -4,7 +4,7 @@
  *
  * Copyright (c) 2000 - 2012 Samsung Electronics Co., Ltd. All rights reserved.
  *
- * Contact: Jeesun Kim <iamjs.kim@samsung.com> Youngkyeong Yun <yk.yun@samsung.com>
+ * Contact: Juho Son <juho80.son@samsung.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
