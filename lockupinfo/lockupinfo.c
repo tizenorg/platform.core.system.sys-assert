@@ -275,11 +275,11 @@ int main()
 
 	system("/usr/bin/keygrab_status 2");
 	snprintf(cbuf, sizeof(cbuf), "%s %s",
-			"cp -af /opt/var/log/keygrab_status.txt", cbuf);
+			"cp -af /opt/var/log/keygrab_status.txt", dbuf);
 	system(cbuf);
 
 	snprintf(cbuf, sizeof(cbuf), "%s %s/%s",
-			"/usr/bin/screenshot bmp", cbuf, "slp_screenshot.bmp");
+			"/usr/bin/screenshot bmp", dbuf, "slp_screenshot.bmp");
 	system(cbuf);
 
 	snprintf(cbuf, sizeof(cbuf), "%s> %s/%s",
