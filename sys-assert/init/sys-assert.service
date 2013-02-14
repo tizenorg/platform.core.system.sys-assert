@@ -1,0 +1,8 @@
+[Unit]
+Description=Enable LD_PRELOAD-based crash debugging
+DefaultDependencies=no
+Before=basic.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl set-environment LD_PRELOAD=/usr/lib/libsys-assert.so
