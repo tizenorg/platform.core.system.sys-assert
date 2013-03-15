@@ -21,6 +21,12 @@
 
 #include <time.h>
 
+#ifdef TARGET
+#define BASE_LAUNCHPAD_ADDR 0x8000
+#else
+#define BASE_LAUNCHPAD_ADDR 0x8048000
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -39,12 +39,18 @@
 /* for PR_SET_DUMPABLE */
 #include <sys/prctl.h>
 #include "sys-assert.h"
+/* for demangle */
+#include <bfd.h>
+#include <libiberty.h>
+#define DMGL_PARAMS   (1 << 0)
+#define DMGL_ANSI   (1 << 1)
+#define DMGL_VERBOSE	 (1 << 3)
 
 #define CMDLINE_PATH "/proc/self/cmdline"
-#define DBG_DIR	"/usr/lib/debug"
 #define EXE_PATH "/proc/self/exe"
 #define MAPS_PATH "/proc/self/maps"
 #define MEMINFO_PATH "/proc/meminfo"
+#define VERINFO_PATH "/etc/info.ini"
 #define STATUS_PATH "/proc/self/status"
 
 #define CRASH_INFO_PATH "/opt/share/crash/info"
@@ -59,7 +65,6 @@
 #define CRASH_REGISTERINFO_TITLE "Register Information"
 
 #define SUPPORT_LIBC_BACKTRACE 1
-#define USE_SYMBOL_DB 1
 #define FUNC_NAME_MAX_LEN 128
 #define FILE_LEN 255
 #define PATH_LEN (FILE_LEN + NAME_MAX)
@@ -167,84 +172,68 @@ static long *get_start_addr(long *value, struct addr_node *start)
 			return NULL;
 	}
 }
-
-#ifdef TARGET
+extern char *bfd_demangle (bfd *, const char *, int);
 /* get function symbol from elf */
 static int
 trace_symbols(void *const *array, int size, struct addr_node *start, int fd_cs)
 {
-	int cnt;
 	Dl_info info_funcs;
-#ifndef USE_SYMBOL_DB
-	int i;
 	Elf32_Ehdr elf_h;
 	Elf32_Shdr *s_headers;
-	int strtab_index = 0;
-	int symtab_index = 0;
-	int num_st = 0;
 	Elf32_Sym *symtab_entry;
-	int fd;
-	int ret;
-	char filename[256];
-#endif
 	unsigned int offset_addr;
 	unsigned int start_addr;
 	unsigned int addr;
+	int i;
+	int cnt;
+	int strtab_index = 0;
+	int symtab_index = 0;
+	int num_st = 0;
+	int fd;
+	int ret;
+	char *demangled_sname = NULL;
+	char filename[NAME_MAX];
 
 	for (cnt = 0; cnt < size; cnt++) {
-#ifndef USE_SYMBOL_DB
 		num_st = 0;
-#endif
 		/* FIXME : for walking on stack trace */
 		if (dladdr(array[cnt], &info_funcs) == 0) {
 			fprintf(stderr, "[sys-assert]dladdr returnes error!\n");
 			/* print just address */
-			fprintf_fd(fd_cs, "%2d: (%p)\n", cnt, array[cnt]);
-
+			fprintf_fd(fd_cs, "dladdr failed %2d: (%p) %s\n", cnt, array[cnt], dlerror());
 			continue;
 		}
 		start_addr = (unsigned int)get_start_addr(array[cnt], start);
 		addr = (unsigned int)array[cnt];
-/* because of launchpad,
- * return value of dladdr when find executable is wrong.
- * so fix dli_fname here */
-		if (info_funcs.dli_fbase == (void *)0x8000
-		    &&
-		    (strncmp("/opt/apps/", info_funcs.dli_fname,
-		      strlen("/opt/apps/")) == 0)) {
-			fprintf(stderr,
-					"[sys-assert][%d] fname = %s, fbase = %p, sname = %s, saddr = %p\n",
-					cnt, info_funcs.dli_fname,
-					info_funcs.dli_fbase,
-					info_funcs.dli_sname, info_funcs.dli_saddr);
+		/* because of launchpad,
+		 * return value of dladdr when find executable is wrong.
+		 * so fix dli_fname here */
+		if (info_funcs.dli_fbase == (void *)BASE_LAUNCHPAD_ADDR
+				&& (strncmp("/opt/apps/", info_funcs.dli_fname,
+						strlen("/opt/apps/")) == 0)) {
 			info_funcs.dli_fname = get_fpath(array[cnt], start);
 			offset_addr = addr;
-			fprintf(stderr,
-					"[sys-assert][%d] start_addr : %x, addr : %x, offset_addr : %x\n",
-					cnt, start_addr, addr, offset_addr);
 		} else {
 			offset_addr = addr - start_addr;
 		}
 		if (info_funcs.dli_sname == NULL) {
-#ifndef USE_SYMBOL_DB
-/*FIXME : get dbg file name from debuglink and search dbg file in DBG_DIR */
-			strcpy(filename, DBG_DIR);
-			strncat(filename, info_funcs.dli_fname, 128);
+			strcpy(filename, info_funcs.dli_fname);
 			fd = open(filename, O_RDONLY);
 			if (fd < 0) {
-				fprintf_fd(fd_cs,
-						"%2d: (%p) [%s]+%p\n",
-						cnt, array[cnt],
-						info_funcs.dli_fname, offset_addr);
-				continue;
+				strcpy(filename, strchr(info_funcs.dli_fname, '/'));
+				fd = open(filename, O_RDONLY);
+				if (fd < 0) {
+					fprintf_fd(fd_cs,
+							"can't open %2d: (%p) [%s] + %p\n",
+							cnt, array[cnt],
+							info_funcs.dli_fname, offset_addr);
+					continue;
+				}
 			}
 			ret = read(fd, &elf_h, sizeof(Elf32_Ehdr));
 			if (ret < sizeof(Elf32_Ehdr)) {
-				fprintf(stderr,
-						"[sys-assert]readnum = %d, [%s]\n",
-						ret, info_funcs.dli_fname);
 				fprintf_fd(fd_cs,
-						"%2d: (%p) [%s]+%p\n",
+						"%2d: (%p) [%s] + %p\n",
 						cnt, array[cnt],
 						info_funcs.dli_fname, offset_addr);
 				continue;
@@ -254,7 +243,7 @@ trace_symbols(void *const *array, int size, struct addr_node *start, int fd_cs)
 				offset_addr = addr;
 			}
 			s_headers =
-			    (Elf32_Shdr *) mmap(0,
+				(Elf32_Shdr *) mmap(0,
 						elf_h.e_shnum *
 						sizeof
 						(Elf32_Shdr),
@@ -265,7 +254,7 @@ trace_symbols(void *const *array, int size, struct addr_node *start, int fd_cs)
 			if (s_headers == NULL) {
 				fprintf(stderr, "[sys-assert]malloc failed\n");
 				fprintf_fd(fd_cs,
-						"%2d: (%p) [%s]+%p\n",
+						"%2d: (%p) [%s] + %p\n",
 						cnt, array[cnt],
 						info_funcs.dli_fname, offset_addr);
 				continue;
@@ -275,83 +264,74 @@ trace_symbols(void *const *array, int size, struct addr_node *start, int fd_cs)
 				return false;
 			for (i = 0; i < elf_h.e_shnum; i++) {
 				ret =
-				    read(fd, &s_headers[i], elf_h.e_shentsize);
+					read(fd, &s_headers[i], elf_h.e_shentsize);
 				if (ret < elf_h.e_shentsize) {
 					fprintf(stderr,
 							"[sys-assert]read error\n");
 					munmap(s_headers,
-					       elf_h.e_shnum *
-					       sizeof(Elf32_Shdr));
+							elf_h.e_shnum *
+							sizeof(Elf32_Shdr));
 					return false;
 				}
 			}
 			for (i = 0; i < elf_h.e_shnum; i++) {
-/* find out .symtab Section index */
 				if (s_headers[i].sh_type == SHT_SYMTAB) {
 					symtab_index = i;
 					num_st =
-					    s_headers[i].sh_size /
-					    s_headers[i].sh_entsize;
-/* number of .symtab entry */
+						s_headers[i].sh_size /
+						s_headers[i].sh_entsize;
 					break;
 				}
 			}
 			/*.strtab index */
 			strtab_index = s_headers[symtab_index].sh_link;
 			symtab_entry =
-			    (Elf32_Sym *)mmap(0, sizeof(Elf32_Sym) * num_st,
-					      PROT_READ | PROT_WRITE,
-					      MAP_PRIVATE | MAP_ANONYMOUS, -1,
-					      0);
+				(Elf32_Sym *)mmap(0, sizeof(Elf32_Sym) * num_st,
+						PROT_READ | PROT_WRITE,
+						MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 			if (symtab_entry == NULL) {
 				fprintf(stderr, "[sys-assert]malloc failed\n");
 				munmap(s_headers,
-				       elf_h.e_shnum * sizeof(Elf32_Shdr));
+						elf_h.e_shnum * sizeof(Elf32_Shdr));
 				return false;
 			}
 			lseek(fd, s_headers[symtab_index].sh_offset, SEEK_SET);
 			for (i = 0; i < num_st; i++) {
 				ret =
-				    read(fd, &symtab_entry[i],
-					 sizeof(Elf32_Sym));
+					read(fd, &symtab_entry[i],
+							sizeof(Elf32_Sym));
 				if (ret < sizeof(Elf32_Sym)) {
-					fprintf(stderr,
+					fprintf_fd(fd_cs,
 							"[sys-assert]symtab_entry[%d],\
 							num_st=%d, readnum = %d\n",
 							i, num_st, ret);
 					break;
 				}
 				if (((info_funcs.dli_fbase +
-				      symtab_entry[i].st_value)
-				     <= array[cnt])
-				    && (array[cnt] <=
-					(info_funcs.dli_fbase +
-					 symtab_entry
-					 [i].st_value +
-					 symtab_entry[i].st_size))) {
+								symtab_entry[i].st_value)
+							<= array[cnt])
+						&& (array[cnt] <=
+							(info_funcs.dli_fbase +
+							 symtab_entry
+							 [i].st_value +
+							 symtab_entry[i].st_size))) {
 					if (symtab_entry[i].st_shndx !=
-					    STN_UNDEF) {
-						lseek(fd,
-						      s_headers
-						      [strtab_index].sh_offset +
-						      symtab_entry[i].st_name,
-						      SEEK_SET);
+							STN_UNDEF) {
+						lseek(fd, s_headers
+								[strtab_index].sh_offset +
+								symtab_entry[i].st_name,
+								SEEK_SET);
 						info_funcs.dli_sname = (void *)
-						    mmap(0,
-							 FUNC_NAME_MAX_LEN,
-							 PROT_READ
-							 |
-							 PROT_WRITE,
-							 MAP_PRIVATE
-							 |
-							 MAP_ANONYMOUS, -1, 0);
+							mmap(0, FUNC_NAME_MAX_LEN,
+									PROT_READ | PROT_WRITE,
+									MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 						ret =
-						    read(fd,
-							 info_funcs.dli_sname,
-							 FUNC_NAME_MAX_LEN);
+							read(fd,
+									info_funcs.dli_sname,
+									FUNC_NAME_MAX_LEN);
 						info_funcs.dli_saddr =
-						    info_funcs.dli_fbase +
-						    symtab_entry[i].st_value;
+							info_funcs.dli_fbase +
+							symtab_entry[i].st_value;
 					}
 					break;
 				}
@@ -359,36 +339,39 @@ trace_symbols(void *const *array, int size, struct addr_node *start, int fd_cs)
 			munmap(s_headers, elf_h.e_shnum * sizeof(Elf32_Shdr));
 			munmap(symtab_entry, sizeof(Elf32_Sym) * num_st);
 			close(fd);
-#endif
-			fprintf_fd(fd_cs, "%2d: (%p) [%s]+%p\n",
-				   cnt, array[cnt],
-				   info_funcs.dli_fname, offset_addr);
-		} else {
-
+		}
+		if (info_funcs.dli_sname != NULL) {
+			demangled_sname = bfd_demangle(NULL,
+					info_funcs.dli_sname,
+					DMGL_PARAMS | DMGL_ANSI | DMGL_VERBOSE);
 			if (array[cnt] >= info_funcs.dli_saddr) {
 				fprintf_fd(fd_cs,
-					   "%2d: %s+0x%x(%p) [%s]+%p\n",
-					   cnt,
-					   info_funcs.dli_sname,
-					   (array[cnt] -
-					    info_funcs.dli_saddr),
-					   array[cnt],
-					   info_funcs.dli_fname, offset_addr);
+						"%2d: %s + 0x%x (%p) [%s] + %p\n",
+						cnt,
+						demangled_sname ? demangled_sname : info_funcs.dli_sname,
+						(array[cnt] - info_funcs.dli_saddr),
+						array[cnt],
+						info_funcs.dli_fname, offset_addr);
 			} else {
 				fprintf_fd(fd_cs,
-					   "%2d: %s-0x%x(%p) [%s]+%p\n",
-					   cnt,
-					   info_funcs.dli_sname,
-					   (info_funcs.dli_saddr
-					    - array[cnt]),
-					   array[cnt],
-					   info_funcs.dli_fname, offset_addr);
+						"%2d: %s - 0x%x (%p) [%s] + %p\n",
+						cnt,
+						demangled_sname ? demangled_sname : info_funcs.dli_sname,
+						(info_funcs.dli_saddr - array[cnt]),
+						array[cnt],
+						info_funcs.dli_fname, offset_addr);
 			}
+			if (demangled_sname)
+				free(demangled_sname);
+		} else {
+			fprintf_fd(fd_cs,
+					"%2d: (%p) [%s] + %p\n",
+					cnt, array[cnt],
+					info_funcs.dli_fname, offset_addr);
 		}
 	}
 	return true;
 }
-#endif
 /* get address list from maps  with print to file */
 static struct addr_node *get_addr_list_from_maps_with_print(int fd_maps, int fd)
 {
@@ -571,7 +554,6 @@ static void print_node_to_file(struct addr_node *start, int fd)
 	struct addr_node *t_node;
 
 	t_node = start;
-	fprintf(stderr, "[sys-assert]start print_node_to_file\n");
 	fprintf_fd(fd, "\n%s\n", CRASH_MAPSINFO_TITLE);
 	while (t_node) {
 		if (!strncmp("[anony]", t_node->fpath, strlen("[anony]"))) {
@@ -838,10 +820,8 @@ static inline void get_localtime(time_t cur_time, struct tm *ctime)
 	}
 	ctime->tm_mon = ++i;
 	ctime->tm_mday = time_var;
-	fprintf(stderr, "local time %d %d %d %d:%d:%d\n",
-			ctime->tm_year, ctime->tm_mon, ctime->tm_mday,
-			ctime->tm_hour, ctime->tm_min, ctime->tm_sec);
 }
+#ifdef STANDALONE
 void sighandler(int signum, siginfo_t *info, void *context)
 {
 	/* for context info */
@@ -856,9 +836,7 @@ void sighandler(int signum, siginfo_t *info, void *context)
 	int fd_cs;		/* for cs file */
 	int fd_maps;		/* for maps */
 	int fd_meminfo;		/* for meminfo */
-#ifdef STANDALONE
 	int fd_verinfo;		/* for version info */
-#endif
 	int fd_cmdline;		/* for cmdline */
 	int fd_status;		/* for status */
 	int fd_curbs;		/* for inotify */
@@ -870,10 +848,8 @@ void sighandler(int signum, siginfo_t *info, void *context)
 	char cs_filepath[PATH_LEN];
 	/* for get time  */
 	time_t cur_time;
-#ifdef STANDALONE
 	struct tm ctime;
 	char timestr[64];
-#endif
 	/* for get info */
 	int thread_use;
 	char *p_exepath = NULL;
@@ -883,16 +859,12 @@ void sighandler(int signum, siginfo_t *info, void *context)
 	char linebuf[BUF_SIZE];
 
 	cur_time = time(NULL);
-#ifdef STANDALONE
 	gmtime_r(&cur_time, &ctime);
 	/*localtime_r(&cur_time, &ctime);*/
 	/*get_localtime(cur_time, &ctime);*/
-#endif
-	fprintf(stderr, "[sys_assert]START of sighandler\n");
 	/* get pid */
 	cs_pid = getpid();
 	cs_tid = (long int)syscall(__NR_gettid);
-#ifdef TARGET
 	/* open maps file */
 	if ((fd_maps = open(MAPS_PATH, O_RDONLY)) < 0) {
 		fprintf(stderr, "[sys-assert]can't open %s\n", MAPS_PATH);
@@ -904,6 +876,7 @@ void sighandler(int signum, siginfo_t *info, void *context)
 	if (head == NULL) {
 		fprintf(stderr, ">>>>error : cannot get address list from maps\n");
 	} else {
+#ifdef TARGET
 #ifndef SUPPORT_LIBC_BACKTRACE
 		/* backtrace using fp */
 		long *SP;	/* point to the top of stack */
@@ -948,7 +921,6 @@ void sighandler(int signum, siginfo_t *info, void *context)
 			cnt_callstack = 2;
 		}
 #endif
-	}
 #else		/* i386 */
 	layout *ebp = ucontext->uc_mcontext.gregs[REG_EBP];
 	callstack_addrs[cnt_callstack++] =
@@ -959,6 +931,7 @@ void sighandler(int signum, siginfo_t *info, void *context)
 	}
 	callstack_strings = backtrace_symbols(callstack_addrs, cnt_callstack);
 #endif
+	}
 	/* get exepath */
 	if ((fd_cmdline = open(CMDLINE_PATH, O_RDONLY)) < 0) {
 		fprintf(stderr, "[sys-assert]can't open %s\n", CMDLINE_PATH);
@@ -971,47 +944,22 @@ void sighandler(int signum, siginfo_t *info, void *context)
 			return;
 		} else {
 			cs_exepath[i] = '\0';
-			fprintf(stderr, "[sys-assert]exepath = %s\n", cs_exepath);
 		}
 	}
 	/* get processname */
-	if ((fd_status = open(STATUS_PATH, O_RDONLY)) < 0) {
-		fprintf(stderr, "[sys-assert]can't open %s\n", STATUS_PATH);
+	if ( (p_exepath = remove_path(cs_exepath)) == NULL)
 		return;
-	} else {
-		i = read(fd_status, linebuf, sizeof(linebuf));
-		close(fd_status);
-		if (i <= 0) {
-			fprintf(stderr, "[sys-assert]can't get status\n");
-			cs_processname[0] = '\0';
-		} else
-			sscanf(linebuf, "%s %s", tag, cs_processname);
-
-		if (cs_processname[0] == '\0') {
-			p_exepath = remove_path(cs_exepath);
-			if (p_exepath == NULL)
-				return;
-			snprintf(cs_processname, NAME_MAX, "%s", p_exepath);
-		}
-		fprintf(stderr, "[sys-assert]processname = %s\n", cs_processname);
-	}
+	snprintf(cs_processname, NAME_MAX, "%s", p_exepath);
 	/* added temporary skip  when crash-worker is asserted */
 	if (!strcmp(cs_processname, "crash-worker") || !strcmp(cs_processname, "crash-popup"))
 		return;
 	/* thread check */
 	if (cs_pid == cs_tid) {
 		thread_use = false;
-		fprintf(stderr,
-				"[sys_assert]this thread is main thread. pid=%d\n",
-				cs_pid);
 	} else {
 		thread_use = true;
-		fprintf(stderr,
-				"[sys_assert]this process is multi-thread process.\
-				pid=%d, tid=%d\n", cs_pid, cs_tid);
 	}
 	/* make crash info file name */
-#ifdef STANDALONE
 	strftime(cs_timestr, sizeof(cs_timestr), "%Y%m%d%H%M%S", &ctime);
 	if (snprintf(cs_filepath, PATH_LEN,
 				"%s/%s_%s.cs", CRASH_REPORT_PATH, cs_processname, cs_timestr) == 0) {
@@ -1029,26 +977,6 @@ void sighandler(int signum, siginfo_t *info, void *context)
 			return;
 		}
 	}
-#else
-	snprintf(cs_timestr, sizeof(cs_timestr), "%lu", cur_time);
-	fprintf(stderr, "[sys-assert]cs timestr %s\n",cs_timestr);
-	if (snprintf(cs_filepath, PATH_LEN,
-				"%s/%d_%s.info", CRASH_INFO_PATH, cs_pid, cs_timestr) == 0) {
-		fprintf(stderr,
-				"[sys-assert]can't make crash info file name : %d%s\n",
-				cs_pid, cs_timestr);
-		return;
-	}
-	/* check crash info dump directory, make directory if absent */
-	if (access(CRASH_INFO_PATH, F_OK) == -1) {
-		if (mkdir(CRASH_INFO_PATH, DIR_PERMS) < 0) {
-			fprintf(stderr,
-					"[sys-assert]can't make dir : %s errno : %s\n",
-					CRASH_INFO_PATH, strerror(errno));
-			return;
-		}
-	}
-#endif
 	/* logging crash information to syslog */
 	syslog(LOG_ERR, "crashed [%s] processname=%s, pid=%d, tid=%d, signal=%d",
 			cs_timestr, cs_processname, cs_pid, cs_tid, info->si_signo);
@@ -1062,7 +990,6 @@ void sighandler(int signum, siginfo_t *info, void *context)
 				cs_filepath, strerror(errno));
 		return;
 	}
-#ifdef STANDALONE
 	/* print version info */
 	fprintf_fd(fd_cs, "S/W Version Information\n");
 	if ((fd_verinfo = open(VERINFO_PATH, O_RDONLY)) < 0) {
@@ -1093,8 +1020,6 @@ void sighandler(int signum, siginfo_t *info, void *context)
 	fprintf_fd(fd_cs, "Date: %s ( UTC )\n", timestr);
 	/* print exe path */
 	fprintf_fd(fd_cs, "Executable File Path: %s\n", cs_exepath);
-	fprintf(stderr, "[sys assert]Exe Path: %s\n", cs_exepath);
-#endif
 	/* print thread info */
 	if (thread_use == true) {
 		fprintf_fd(fd_cs,
@@ -1108,26 +1033,49 @@ void sighandler(int signum, siginfo_t *info, void *context)
 #ifdef TARGET
 	fprintf_fd(fd_cs, "\n%s\n", CRASH_REGISTERINFO_TITLE);
 	fprintf_fd(fd_cs,
-			"r0 = 0x%08x, r1 = 0x%08x\nr2 = 0x%08x, r3 = 0x%08x\n",
+			"r0   = 0x%08x, r1   = 0x%08x\nr2   = 0x%08x, r3   = 0x%08x\n",
 			ucontext->uc_mcontext.arm_r0,
 			ucontext->uc_mcontext.arm_r1,
 			ucontext->uc_mcontext.arm_r2, ucontext->uc_mcontext.arm_r3);
 	fprintf_fd(fd_cs,
-			"r4 = 0x%08x, r5 = 0x%08x\nr6 = 0x%08x, r7 = 0x%08x\n",
+			"r4   = 0x%08x, r5   = 0x%08x\nr6   = 0x%08x, r7   = 0x%08x\n",
 			ucontext->uc_mcontext.arm_r4,
 			ucontext->uc_mcontext.arm_r5,
 			ucontext->uc_mcontext.arm_r6, ucontext->uc_mcontext.arm_r7);
 	fprintf_fd(fd_cs,
-			"r8 = 0x%08x, r9 = 0x%08x\nr10 = 0x%08x, fp = 0x%08x\n",
+			"r8   = 0x%08x, r9   = 0x%08x\nr10  = 0x%08x, fp   = 0x%08x\n",
 			ucontext->uc_mcontext.arm_r8,
 			ucontext->uc_mcontext.arm_r9,
 			ucontext->uc_mcontext.arm_r10, ucontext->uc_mcontext.arm_fp);
 	fprintf_fd(fd_cs,
-			"ip = 0x%08x, sp = 0x%08x\nlr = 0x%08x, pc = 0x%08x\n",
+			"ip   = 0x%08x, sp   = 0x%08x\nlr   = 0x%08x, pc   = 0x%08x\n",
 			ucontext->uc_mcontext.arm_ip,
 			ucontext->uc_mcontext.arm_sp,
 			ucontext->uc_mcontext.arm_lr, ucontext->uc_mcontext.arm_pc);
 	fprintf_fd(fd_cs, "cpsr = 0x%08x\n", ucontext->uc_mcontext.arm_cpsr);
+#else
+	fprintf_fd(fd_cs, "\n%s\n", CRASH_REGISTERINFO_TITLE);
+	fprintf_fd(fd_cs,
+			"gs  = 0x%08x, fs  = 0x%08x\nes  = 0x%08x, ds  = 0x%08x\n",
+			ucontext->uc_mcontext.gregs[REG_GS],
+			ucontext->uc_mcontext.gregs[REG_FS],
+			ucontext->uc_mcontext.gregs[REG_ES],
+			ucontext->uc_mcontext.gregs[REG_DS]);
+	fprintf_fd(fd_cs,
+			"edi = 0x%08x, esi = 0x%08x\nebp = 0x%08x, esp = 0x%08x\n",
+			ucontext->uc_mcontext.gregs[REG_EDI],
+			ucontext->uc_mcontext.gregs[REG_ESI],
+			ucontext->uc_mcontext.gregs[REG_EBP],
+			ucontext->uc_mcontext.gregs[REG_ESP]);
+	fprintf_fd(fd_cs,
+			"eax = 0x%08x, ebx = 0x%08x\necx = 0x%08x, edx = 0x%08x\n",
+			ucontext->uc_mcontext.gregs[REG_EAX],
+			ucontext->uc_mcontext.gregs[REG_EBX],
+			ucontext->uc_mcontext.gregs[REG_ECX],
+			ucontext->uc_mcontext.gregs[REG_EDX]);
+	fprintf_fd(fd_cs,
+			"eip = 0x%08x\n",
+			ucontext->uc_mcontext.gregs[REG_EIP]);
 #endif
 	/* print meminfo */
 	fprintf_fd(fd_cs, "\n%s\n", CRASH_MEMINFO_TITLE);
@@ -1137,72 +1085,417 @@ void sighandler(int signum, siginfo_t *info, void *context)
 		while (fgets_fd(linebuf, BUF_SIZE, fd_meminfo) != NULL) {
 			sscanf(linebuf, "%s %s %*s", infoname, memsize1);
 			if (strcmp("MemTotal:", infoname) == 0) {
-				fprintf_fd(fd_cs, "%s %s KB\n", infoname,
+				fprintf_fd(fd_cs, "%s %8s KB\n", infoname,
 						memsize1);
 			} else if (strcmp("MemFree:", infoname) == 0) {
-				fprintf_fd(fd_cs, "%s %s KB\n", infoname,
+				fprintf_fd(fd_cs, "%s  %8s KB\n", infoname,
 						memsize1);
 			} else if (strcmp("Buffers:", infoname) == 0) {
-				fprintf_fd(fd_cs, "%s  %s KB\n",
+				fprintf_fd(fd_cs, "%s  %8s KB\n",
 						infoname, memsize1);
 			} else if (strcmp("Cached:", infoname) == 0) {
-				fprintf_fd(fd_cs, "%s   %s KB\n",
+				fprintf_fd(fd_cs, "%s   %8s KB\n",
 						infoname, memsize1);
 				break;
 			}
 		}
 		close(fd_meminfo);
 	}
-#ifdef TARGET
+	if ((fd_status = open(STATUS_PATH, O_RDONLY)) < 0) {
+		fprintf(stderr, "[sys-assert]can't open %s\n", STATUS_PATH);
+	} else {
+		while (fgets_fd(linebuf, BUF_SIZE, fd_status) != NULL) {
+			sscanf(linebuf, "%s %s %*s", infoname, memsize1);
+			if (strcmp("VmPeak:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s   %8s KB\n", infoname,
+						memsize1);
+			} else if (strcmp("VmSize:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s   %8s KB\n", infoname,
+						memsize1);
+			} else if (strcmp("VmLck:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s    %8s KB\n", infoname,
+						memsize1);
+			} else if (strcmp("VmPin:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s    %8s KB\n", infoname,
+						memsize1);
+			} else if (strcmp("VmHWM:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s    %8s KB\n",
+						infoname, memsize1);
+			} else if (strcmp("VmRSS:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s    %8s KB\n",
+						infoname, memsize1);
+			} else if (strcmp("VmData:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s   %8s KB\n",
+						infoname, memsize1);
+			} else if (strcmp("VmStk:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s    %8s KB\n",
+						infoname, memsize1);
+			} else if (strcmp("VmExe:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s    %8s KB\n",
+						infoname, memsize1);
+			} else if (strcmp("VmLib:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s    %8s KB\n",
+						infoname, memsize1);
+			} else if (strcmp("VmPTE:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s    %8s KB\n",
+						infoname, memsize1);
+			} else if (strcmp("VmSwap:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s   %8s KB\n",
+						infoname, memsize1);
+				break;
+			}
+		}
+		close(fd_status);
+	}
 	if (head == NULL) {
 		fprintf_fd(fd_cs, "Failed to get address list\n");
 		fprintf(stderr, ">>>>error : cannot get address list from maps\n");
 	} else {
 		/* print maps information */
 		print_node_to_file(head, fd_cs);
+		/* print callstack */
 		fprintf_fd(fd_cs, "\n%s (PID:%d)\n", CRASH_CALLSTACKINFO_TITLE, cs_pid);
-#ifndef SUPPORT_LIBC_BACKTRACE
 		fprintf_fd(fd_cs, "Call Stack Count: %d\n", cnt_callstack);
-		/* print callstack */
-		if (false ==
-				trace_symbols(callstack_addrs, cnt_callstack, head, fd_cs)) {
-			callstack_strings =
-				backtrace_symbols(callstack_addrs, cnt_callstack);
-			/* print callstack information */
-			for (i = 0; i < cnt_callstack; i++)
-				fprintf_fd(fd_cs, "%2d: %s\n", i, callstack_strings[i]);
-		}
-		if (FP == NULL)
-			fprintf_fd(fd_cs,
-					"there is no callstack because of fp == NULL\n");
-#else		/*SUPPORT_LIBC_BACKTRACE*/
-		fprintf_fd(fd_cs, "Call Stack Count: %d\n", cnt_callstack);
-		/* print callstack */
 		if (false ==
 				trace_symbols(&callstack_addrs[2], cnt_callstack, head, fd_cs)) {
 			fprintf(stderr, "[sys-assert] trace_symbols failed\n");
 		}
-#endif
 		fprintf_fd(fd_cs, "%s\n", CRASH_CALLSTACKINFO_TITLE_E);
 		free_all_nodes(head);
 	}
-#else		/* i386 */
-	fprintf_fd(fd_cs, "\n%s (PID:%d)\n", CRASH_CALLSTACKINFO_TITLE, cs_pid);
-	fprintf_fd(fd_cs, "Call Stack Count: %d\n", cnt_callstack);
-	/* print callstack information */
-	for (i = 0; i < cnt_callstack; i++)
-		fprintf_fd(fd_cs, "%2d: %s\n", i, callstack_strings[i]);
-	fprintf_fd(fd_cs, "%s\n", CRASH_CALLSTACKINFO_TITLE_E);
-#endif
 	/* cs file sync */
 	fsync(fd_cs);
 	/* clean up */
 	if (close(fd_cs) == -1)
 		fprintf(stderr, "[sys-assert] fd_cs close error!!\n");
-#ifndef STANDALONE
+	for (i = 0; i < NUM_SIG_TO_HANDLE; i++) {
+		if (sig_to_handle[i] == signum) {
+			sigaction(signum, &g_oldact[i], NULL);
+			break;
+		}
+	}
+	raise(signum);
+}
+#else
+void sighandler(int signum, siginfo_t *info, void *context)
+{
+	/* for context info */
+	ucontext_t *ucontext = context;
+	void *callstack_addrs[CALLSTACK_SIZE];
+	int cnt_callstack = 0;
+	/* for backtrace_symbols() */
+	char **callstack_strings;
+	struct addr_node *head = NULL;
+	int i;
+	/* file descriptor */
+	int fd_cs;		/* for cs file */
+	int fd_maps;		/* for maps */
+	int fd_meminfo;		/* for meminfo */
+	int fd_cmdline;		/* for cmdline */
+	int fd_status;		/* for status */
+	int fd_curbs;		/* for inotify */
+	pid_t cs_pid;
+	pid_t cs_tid;
+	char cs_timestr[64];
+	char cs_processname[NAME_MAX] = {0,};
+	char cs_exepath[PATH_LEN] = {0,};
+	char cs_filepath[PATH_LEN];
+	/* for get time  */
+	time_t cur_time;
+	/* for get info */
+	int thread_use;
+	char *p_exepath = NULL;
+	char tag[64];
+	char infoname[20];
+	char memsize1[24];
+	char linebuf[BUF_SIZE];
+
+	cur_time = time(NULL);
+	/* get pid */
+	cs_pid = getpid();
+	cs_tid = (long int)syscall(__NR_gettid);
+	/* open maps file */
+	if ((fd_maps = open(MAPS_PATH, O_RDONLY)) < 0) {
+		fprintf(stderr, "[sys-assert]can't open %s\n", MAPS_PATH);
+	} else {
+		/* parsing the maps to get code segment address*/
+		head = get_addr_list_from_maps(fd_maps);
+		close(fd_maps);
+	}
+	if (head == NULL) {
+		fprintf(stderr, ">>>>error : cannot get address list from maps\n");
+	} else {
+#ifdef TARGET
+#ifndef SUPPORT_LIBC_BACKTRACE
+		/* backtrace using fp */
+		long *SP;	/* point to the top of stack */
+		long *PC;	/* point to the program counter */
+		long *BP = __libc_stack_end;
+		long *FP;
+		long *framep;
+		/* get sp , pc and bp */
+		SP = (long *)ucontext->uc_mcontext.arm_sp;
+		PC = (long *)ucontext->uc_mcontext.arm_pc;
+		FP = (long *)ucontext->uc_mcontext.arm_fp;
+		framep = (long *)FP;
+		callstack_addrs[cnt_callstack++] =
+			(long *)ucontext->uc_mcontext.arm_pc;
+		if (FP != NULL) {
+			for (; framep < BP;) {
+				if (is_valid_addr(framep, head) == false)
+					break;
+
+				if (is_valid_addr((long *)*framep, head) == false)
+					break;
+
+				callstack_addrs[cnt_callstack] = (long *)*framep;
+
+				framep--;
+				framep = (long *)(*framep);
+				cnt_callstack++;
+
+				if (cnt_callstack == CALLSTACK_SIZE)
+					break;
+				if (framep < FP)
+					break;
+			}
+		}
+#else		/*SUPPORT_LIBC_BACKTRACE*/
+		cnt_callstack = backtrace(callstack_addrs, CALLSTACK_SIZE);
+		if (cnt_callstack > 2) {
+			cnt_callstack -= 2;
+		} else {
+			callstack_addrs[2] = (long *)ucontext->uc_mcontext.arm_pc;
+			callstack_addrs[3] = (long *)ucontext->uc_mcontext.arm_lr;
+			cnt_callstack = 2;
+		}
+#endif
+#else		/* i386 */
+	layout *ebp = ucontext->uc_mcontext.gregs[REG_EBP];
+	callstack_addrs[cnt_callstack++] =
+		(long *)ucontext->uc_mcontext.gregs[REG_EIP];
+	while (ebp) {
+		callstack_addrs[cnt_callstack++] = ebp->ret;
+		ebp = ebp->ebp;
+	}
+	callstack_strings = backtrace_symbols(callstack_addrs, cnt_callstack);
+	if (cnt_callstack > 2) {
+		cnt_callstack -= 2;
+	} else {
+		callstack_addrs[2] = (long *)ucontext->uc_mcontext.gregs[REG_EIP];
+		callstack_addrs[3] = (long *)ucontext->uc_mcontext.gregs[REG_ESP];
+		cnt_callstack = 2;
+	}
+#endif
+	}
+	/* get exepath */
+	if ((fd_cmdline = open(CMDLINE_PATH, O_RDONLY)) < 0) {
+		fprintf(stderr, "[sys-assert]can't open %s\n", CMDLINE_PATH);
+		return;
+	} else {
+		i = read(fd_cmdline, cs_exepath, sizeof(cs_exepath));
+		close(fd_cmdline);
+		if (i <= 0) {
+			fprintf(stderr, "[sys-assert]can't get cmdline\n");
+			return;
+		} else {
+			cs_exepath[i] = '\0';
+		}
+	}
+	/* get processname */
+	if ( (p_exepath = remove_path(cs_exepath)) == NULL)
+		return;
+	snprintf(cs_processname, NAME_MAX, "%s", p_exepath);
+	/* added temporary skip  when crash-worker is asserted */
+	if (!strcmp(cs_processname, "crash-worker") || !strcmp(cs_processname, "crash-popup"))
+		return;
+	/* thread check */
+	if (cs_pid == cs_tid) {
+		thread_use = false;
+	} else {
+		thread_use = true;
+	}
+	/* make crash info file name */
+	snprintf(cs_timestr, sizeof(cs_timestr), "%lu", cur_time);
+	if (snprintf(cs_filepath, PATH_LEN,
+				"%s/%d_%s.info", CRASH_INFO_PATH, cs_pid, cs_timestr) == 0) {
+		fprintf(stderr,
+				"[sys-assert]can't make crash info file name : %d%s\n",
+				cs_pid, cs_timestr);
+		return;
+	}
+	/* check crash info dump directory, make directory if absent */
+	if (access(CRASH_INFO_PATH, F_OK) == -1) {
+		if (mkdir(CRASH_INFO_PATH, DIR_PERMS) < 0) {
+			fprintf(stderr,
+					"[sys-assert]can't make dir : %s errno : %s\n",
+					CRASH_INFO_PATH, strerror(errno));
+			return;
+		}
+	}
+	/* logging crash information to syslog */
+	syslog(LOG_ERR, "crashed [%s] processname=%s, pid=%d, tid=%d, signal=%d",
+			cs_timestr, cs_processname, cs_pid, cs_tid, info->si_signo);
+	/* complete filepath_cs */
+	if (!strlen(cs_filepath))
+		return;
+	/* create cs file */
+	if ((fd_cs = creat(cs_filepath, FILE_PERMS)) < 0) {
+		fprintf(stderr,
+				"[sys-assert]can't create %s. errno = %s\n",
+				cs_filepath, strerror(errno));
+		return;
+	}
+	/* print thread info */
+	if (thread_use == true) {
+		fprintf_fd(fd_cs,
+				"This process is multi-thread process\npid=%d tid=%d\n",
+				cs_pid, cs_tid);
+	}
+	/* print signal info */
+	print_signal_info(info, fd_cs);
+	fsync(fd_cs);
+	/* print additional info */
+#ifdef TARGET
+	fprintf_fd(fd_cs, "\n%s\n", CRASH_REGISTERINFO_TITLE);
+	fprintf_fd(fd_cs,
+			"r0   = 0x%08x, r1   = 0x%08x\nr2   = 0x%08x, r3   = 0x%08x\n",
+			ucontext->uc_mcontext.arm_r0,
+			ucontext->uc_mcontext.arm_r1,
+			ucontext->uc_mcontext.arm_r2, ucontext->uc_mcontext.arm_r3);
+	fprintf_fd(fd_cs,
+			"r4   = 0x%08x, r5   = 0x%08x\nr6   = 0x%08x, r7   = 0x%08x\n",
+			ucontext->uc_mcontext.arm_r4,
+			ucontext->uc_mcontext.arm_r5,
+			ucontext->uc_mcontext.arm_r6, ucontext->uc_mcontext.arm_r7);
+	fprintf_fd(fd_cs,
+			"r8   = 0x%08x, r9   = 0x%08x\nr10  = 0x%08x, fp   = 0x%08x\n",
+			ucontext->uc_mcontext.arm_r8,
+			ucontext->uc_mcontext.arm_r9,
+			ucontext->uc_mcontext.arm_r10, ucontext->uc_mcontext.arm_fp);
+	fprintf_fd(fd_cs,
+			"ip   = 0x%08x, sp   = 0x%08x\nlr   = 0x%08x, pc   = 0x%08x\n",
+			ucontext->uc_mcontext.arm_ip,
+			ucontext->uc_mcontext.arm_sp,
+			ucontext->uc_mcontext.arm_lr, ucontext->uc_mcontext.arm_pc);
+	fprintf_fd(fd_cs, "cpsr = 0x%08x\n", ucontext->uc_mcontext.arm_cpsr);
+#else
+	fprintf_fd(fd_cs, "\n%s\n", CRASH_REGISTERINFO_TITLE);
+	fprintf_fd(fd_cs,
+			"gs  = 0x%08x, fs  = 0x%08x\nes  = 0x%08x, ds  = 0x%08x\n",
+			ucontext->uc_mcontext.gregs[REG_GS],
+			ucontext->uc_mcontext.gregs[REG_FS],
+			ucontext->uc_mcontext.gregs[REG_ES],
+			ucontext->uc_mcontext.gregs[REG_DS]);
+	fprintf_fd(fd_cs,
+			"edi = 0x%08x, esi = 0x%08x\nebp = 0x%08x, esp = 0x%08x\n",
+			ucontext->uc_mcontext.gregs[REG_EDI],
+			ucontext->uc_mcontext.gregs[REG_ESI],
+			ucontext->uc_mcontext.gregs[REG_EBP],
+			ucontext->uc_mcontext.gregs[REG_ESP]);
+	fprintf_fd(fd_cs,
+			"eax = 0x%08x, ebx = 0x%08x\necx = 0x%08x, edx = 0x%08x\n",
+			ucontext->uc_mcontext.gregs[REG_EAX],
+			ucontext->uc_mcontext.gregs[REG_EBX],
+			ucontext->uc_mcontext.gregs[REG_ECX],
+			ucontext->uc_mcontext.gregs[REG_EDX]);
+	fprintf_fd(fd_cs,
+			"eip = 0x%08x\n",
+			ucontext->uc_mcontext.gregs[REG_EIP]);
+#endif
+	/* print meminfo */
+	fprintf_fd(fd_cs, "\n%s\n", CRASH_MEMINFO_TITLE);
+	if ((fd_meminfo = open(MEMINFO_PATH, O_RDONLY)) < 0) {
+		fprintf(stderr, "[sys-assert]can't open %s\n", MEMINFO_PATH);
+	} else {
+		while (fgets_fd(linebuf, BUF_SIZE, fd_meminfo) != NULL) {
+			sscanf(linebuf, "%s %s %*s", infoname, memsize1);
+			if (strcmp("MemTotal:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s %8s KB\n", infoname,
+						memsize1);
+			} else if (strcmp("MemFree:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s  %8s KB\n", infoname,
+						memsize1);
+			} else if (strcmp("Buffers:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s  %8s KB\n",
+						infoname, memsize1);
+			} else if (strcmp("Cached:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s   %8s KB\n",
+						infoname, memsize1);
+				break;
+			}
+		}
+		close(fd_meminfo);
+	}
+	if ((fd_status = open(STATUS_PATH, O_RDONLY)) < 0) {
+		fprintf(stderr, "[sys-assert]can't open %s\n", STATUS_PATH);
+	} else {
+		while (fgets_fd(linebuf, BUF_SIZE, fd_status) != NULL) {
+			sscanf(linebuf, "%s %s %*s", infoname, memsize1);
+			if (strcmp("VmPeak:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s   %8s KB\n", infoname,
+						memsize1);
+			} else if (strcmp("VmSize:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s   %8s KB\n", infoname,
+						memsize1);
+			} else if (strcmp("VmLck:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s    %8s KB\n", infoname,
+						memsize1);
+			} else if (strcmp("VmPin:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s    %8s KB\n", infoname,
+						memsize1);
+			} else if (strcmp("VmHWM:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s    %8s KB\n",
+						infoname, memsize1);
+			} else if (strcmp("VmRSS:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s    %8s KB\n",
+						infoname, memsize1);
+			} else if (strcmp("VmData:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s   %8s KB\n",
+						infoname, memsize1);
+			} else if (strcmp("VmStk:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s    %8s KB\n",
+						infoname, memsize1);
+			} else if (strcmp("VmExe:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s    %8s KB\n",
+						infoname, memsize1);
+			} else if (strcmp("VmLib:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s    %8s KB\n",
+						infoname, memsize1);
+			} else if (strcmp("VmPTE:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s    %8s KB\n",
+						infoname, memsize1);
+			} else if (strcmp("VmSwap:", infoname) == 0) {
+				fprintf_fd(fd_cs, "%s   %8s KB\n",
+						infoname, memsize1);
+				break;
+			}
+		}
+		close(fd_status);
+	}
+	if (head == NULL) {
+		fprintf_fd(fd_cs, "Failed to get address list\n");
+		fprintf(stderr, ">>>>error : cannot get address list from maps\n");
+	} else {
+		/* print maps information */
+		print_node_to_file(head, fd_cs);
+		/* print callstack */
+		fprintf_fd(fd_cs, "\n%s (PID:%d)\n", CRASH_CALLSTACKINFO_TITLE, cs_pid);
+		fprintf_fd(fd_cs, "Call Stack Count: %d\n", cnt_callstack);
+		if (false ==
+				trace_symbols(&callstack_addrs[2], cnt_callstack, head, fd_cs)) {
+			fprintf(stderr, "[sys-assert] trace_symbols failed\n");
+		}
+		fprintf_fd(fd_cs, "%s\n", CRASH_CALLSTACKINFO_TITLE_E);
+		free_all_nodes(head);
+	}
+	/* cs file sync */
+	fsync(fd_cs);
+	/* clean up */
+	if (close(fd_cs) == -1)
+		fprintf(stderr, "[sys-assert] fd_cs close error!!\n");
 	/* core dump set */
 	if (prctl(PR_GET_DUMPABLE) == 0) {
-		fprintf(stderr, "[sys-assert]set PR_SET_DUMPABLE to 1\n");
 		prctl(PR_SET_DUMPABLE, 1);
 	}
 	/* NOTIFY CRASH */
@@ -1214,19 +1507,15 @@ void sighandler(int signum, siginfo_t *info, void *context)
 				strlen(cs_processname) + strlen(cs_exepath));
 		close(fd_curbs);
 	}
-#endif
 	for (i = 0; i < NUM_SIG_TO_HANDLE; i++) {
 		if (sig_to_handle[i] == signum) {
 			sigaction(signum, &g_oldact[i], NULL);
-			fprintf(stderr,
-					"sighandler = %p, g_sig_oldact[i] = %p\n",
-					(void *)sighandler, g_oldact[i].sa_handler);
 			break;
 		}
 	}
 	raise(signum);
-	fprintf(stderr, "[sys_assert]END of sighandler\n");
 }
+#endif
 __attribute__ ((constructor))
 void init()
 {

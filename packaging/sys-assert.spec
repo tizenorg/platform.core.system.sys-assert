@@ -1,6 +1,6 @@
 Name:       sys-assert
 Summary:    libsys-assert (shared object).
-Version:    0.3.2
+Version:    0.3.3
 Release:    5
 Group:      Framework/system
 License:    Apache License, Version 2.0
@@ -8,6 +8,7 @@ Source0:    %{name}-%{version}.tar.gz
 
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  cmake
+BuildRequires:  binutils-devel
 Requires(post): coreutils
 
 %description
@@ -31,6 +32,9 @@ rm -rf %{buildroot}
 %make_install
 mkdir -p %{buildroot}/usr/share/license
 cp LICENSE.APLv2 %{buildroot}/usr/share/license/%{name}
+mkdir -p %{buildroot}/usr/lib/systemd/system/basic.target.wants
+ln -s ../sys-assert.service %{buildroot}/usr/lib/systemd/system/basic.target.wants/
+
 %post
 /sbin/ldconfig
 mkdir -p /opt/share/crash/info
@@ -56,5 +60,6 @@ fi
 %{_bindir}/core-launcher
 %{_libdir}/libsys-assert.so
 /usr/share/license/%{name}
-
-
+%{_libdir}/sysctl.d/sys-assert.conf
+%{_libdir}/systemd/system/sys-assert.service
+%{_libdir}/systemd/system/basic.target.wants/sys-assert.service
