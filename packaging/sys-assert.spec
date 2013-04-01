@@ -23,9 +23,8 @@ export CFLAGS+=" -fPIC"
     export CFLAGS+=" -DTARGET"
 %endif
 
-cmake . -DCMAKE_INSTALL_PREFIX=/usr
-
-make %{?jobs:-j%jobs}
+%cmake .
+make %{?_smp_mflags}
 
 %install
 rm -rf %{buildroot}
@@ -60,6 +59,6 @@ fi
 %{_bindir}/core-launcher
 %{_libdir}/libsys-assert.so
 /usr/share/license/%{name}
-%{_libdir}/sysctl.d/sys-assert.conf
-%{_libdir}/systemd/system/sys-assert.service
-%{_libdir}/systemd/system/basic.target.wants/sys-assert.service
+/usr/lib/sysctl.d/sys-assert.conf
+/usr/lib/systemd/system/sys-assert.service
+/usr/lib/systemd/system/basic.target.wants/sys-assert.service
