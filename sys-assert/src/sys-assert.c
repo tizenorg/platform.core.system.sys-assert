@@ -39,16 +39,6 @@
 /* for PR_SET_DUMPABLE */
 #include <sys/prctl.h>
 #include "sys-assert.h"
-/* for demangle */
-/* Fix for the issue: http://sourceware.org/bugzilla/show_bug.cgi?id=14243
- */
-#define PACKAGE_VERSION  "0.3.3"
-#define PACKAGE "sys-assert"
-#include <bfd.h>
-#include <libiberty.h>
-#define DMGL_PARAMS   (1 << 0)
-#define DMGL_ANSI   (1 << 1)
-#define DMGL_VERBOSE	 (1 << 3)
 
 #define CMDLINE_PATH "/proc/self/cmdline"
 #define EXE_PATH "/proc/self/exe"
@@ -176,7 +166,6 @@ static long *get_start_addr(long *value, struct addr_node *start)
 			return NULL;
 	}
 }
-extern char *bfd_demangle (bfd *, const char *, int);
 /* get function symbol from elf */
 static int
 trace_symbols(void *const *array, int size, struct addr_node *start, int fd_cs)
@@ -195,7 +184,6 @@ trace_symbols(void *const *array, int size, struct addr_node *start, int fd_cs)
 	int num_st = 0;
 	int fd;
 	int ret;
-	char *demangled_sname = NULL;
 	char filename[NAME_MAX];
 
 	for (cnt = 0; cnt < size; cnt++) {
@@ -345,28 +333,21 @@ trace_symbols(void *const *array, int size, struct addr_node *start, int fd_cs)
 			close(fd);
 		}
 		if (info_funcs.dli_sname != NULL) {
-			demangled_sname = bfd_demangle(NULL,
-					info_funcs.dli_sname,
-					DMGL_PARAMS | DMGL_ANSI | DMGL_VERBOSE);
 			if (array[cnt] >= info_funcs.dli_saddr) {
 				fprintf_fd(fd_cs,
 						"%2d: %s + 0x%x (%p) [%s] + %p\n",
-						cnt,
-						demangled_sname ? demangled_sname : info_funcs.dli_sname,
+						cnt, info_funcs.dli_sname,
 						(array[cnt] - info_funcs.dli_saddr),
 						array[cnt],
 						info_funcs.dli_fname, offset_addr);
 			} else {
 				fprintf_fd(fd_cs,
 						"%2d: %s - 0x%x (%p) [%s] + %p\n",
-						cnt,
-						demangled_sname ? demangled_sname : info_funcs.dli_sname,
+						cnt, info_funcs.dli_sname,
 						(info_funcs.dli_saddr - array[cnt]),
 						array[cnt],
 						info_funcs.dli_fname, offset_addr);
 			}
-			if (demangled_sname)
-				free(demangled_sname);
 		} else {
 			fprintf_fd(fd_cs,
 					"%2d: (%p) [%s] + %p\n",

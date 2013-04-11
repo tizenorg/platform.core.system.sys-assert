@@ -8,7 +8,6 @@ Source0:    %{name}-%{version}.tar.gz
 
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  cmake
-BuildRequires:  binutils-devel
 Requires(post): coreutils
 
 %description
