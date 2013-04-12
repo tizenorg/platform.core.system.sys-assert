@@ -30,8 +30,6 @@ rm -rf %{buildroot}
 %make_install
 mkdir -p %{buildroot}/usr/share/license
 cp LICENSE.APLv2 %{buildroot}/usr/share/license/%{name}
-mkdir -p %{buildroot}/usr/lib/systemd/system/basic.target.wants
-ln -s ../sys-assert.service %{buildroot}/usr/lib/systemd/system/basic.target.wants/
 
 %post
 /sbin/ldconfig
@@ -55,9 +53,6 @@ fi
 %files
 %manifest sys-assert.manifest
 %{_bindir}/coredumpctrl.sh
-%{_bindir}/core-launcher
 %{_libdir}/libsys-assert.so
 /usr/share/license/%{name}
 /usr/lib/sysctl.d/sys-assert.conf
-/usr/lib/systemd/system/sys-assert.service
-/usr/lib/systemd/system/basic.target.wants/sys-assert.service
