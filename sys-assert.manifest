@@ -12,5 +12,6 @@
 		<filesystem path="/usr/lib/libsys-assert.so" label="_" exec_label="none"/>
 		<filesystem path="/etc/ld.so.preload" label="_" exec_label="none"/>
 		<filesystem path="/usr/bin/coredumpctrl.sh" label="_" exec_label="none"/>
+		<filesystem path="/opt/etc/.debugmode" label="_" exec_label="none"/>
 	</assign>
 </manifest>

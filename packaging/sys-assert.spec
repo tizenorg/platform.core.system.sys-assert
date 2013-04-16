@@ -54,5 +54,6 @@ fi
 %manifest sys-assert.manifest
 %{_bindir}/coredumpctrl.sh
 %{_libdir}/libsys-assert.so
+/opt/etc/.debugmode
 /usr/share/license/%{name}
 /usr/lib/sysctl.d/sys-assert.conf
