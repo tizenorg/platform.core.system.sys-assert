@@ -283,12 +283,13 @@ static int trace_symbols(void *const *array, int size, struct addr_node *start, 
 				close(fd);
 			} else {
 				/*.strtab index */
-				strtab_index = s_headers[symtab_index].sh_link;
+				if (symtab_index < elf_h.e_shnum)
+					strtab_index = s_headers[symtab_index].sh_link;
 				symtab_entry =
 					(Elf32_Sym *)mmap(0, sizeof(Elf32_Sym) * num_st,
 						PROT_READ | PROT_WRITE,
 						MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-				if (symtab_entry == NULL) {
+				if (symtab_entry == NULL || elf_h.e_shnum <= strtab_index) {
 					fprintf(stderr, "[sys-assert]malloc failed\n");
 					munmap(s_headers, elf_h.e_shnum * sizeof(Elf32_Shdr));
 					close(fd);
@@ -670,7 +671,9 @@ void sighandler(int signum, siginfo_t *info, void *context)
 		callstack_addrs[cnt_callstack++] = ebp->ret;
 		ebp = ebp->ebp;
 	}
-	if (cnt_callstack < 2) {
+	if (cnt_callstack > 2) {
+		cnt_callstack -= 2;
+	} else {
 		callstack_addrs[2] = (long *)ucontext->uc_mcontext.gregs[REG_EIP];
 		callstack_addrs[3] = (long *)ucontext->uc_mcontext.gregs[REG_ESP];
 		cnt_callstack = 2;
