@@ -46,7 +46,7 @@ if [ -f %{_libdir}/rpm-plugins/msm.so ]; then
 fi
 
 if [ ! -d /.build ]; then
-	echo "/usr/lib/libsys-assert.so" >> /etc/ld.so.preload
+	echo "%{_libdir}/libsys-assert.so" >> /etc/ld.so.preload
 	chmod 644 /etc/ld.so.preload
 fi
 
