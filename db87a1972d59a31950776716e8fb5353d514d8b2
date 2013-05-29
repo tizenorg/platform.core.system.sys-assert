@@ -1,0 +1,8 @@
+Change-Id: Idb87a1972d59a31950776716e8fb5353d514d8b2
+Code-Review+2: Anas Nashif
+Verified+1: Baptiste DURAND <baptiste.durand@eurogiciel.fr>
+Submitted-by: Anas Nashif
+Submitted-at: Wed, 29 May 2013 08:07:22 -0700
+Reviewed-on: https://review.tizen.org/gerrit/3756
+Project: platform/core/system/sys-assert
+Branch: refs/heads/tizen
