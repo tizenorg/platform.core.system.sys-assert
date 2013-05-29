@@ -1,0 +1,3 @@
+* Wed May 29 2013 Baptiste DURAND <baptiste.durand@eurogiciel.fr> accepted/tizen/20130520.101311@db87a19
+- Remove hardcoded library path
+- Fix compatibility for x64 arch
