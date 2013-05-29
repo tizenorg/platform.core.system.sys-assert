@@ -8,6 +8,9 @@ SET(SRCS
 SET(PREFIX ${CMAKE_INSTALL_PREFIX})
 SET(LIBDIR "\${prefix}/lib")
 
+INCLUDE(FindPkgConfig)
+pkg_check_modules(pkgs REQUIRED libunwind)
+
 IF("${CMAKE_BUILD_TYPE}" STREQUAL "")
 	SET(CMAKE_BUILD_TYPE "Release")
 ENDIF("${CMAKE_BUILD_TYPE}" STREQUAL "")
