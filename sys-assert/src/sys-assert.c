@@ -664,9 +664,15 @@ void sighandler(int signum, siginfo_t *info, void *context)
 		cnt_callstack = 2;
 	}
 #else		/* i386 */
+#if __x86_64__
+	layout *ebp = ucontext->uc_mcontext.gregs[REG_RBP];
+	callstack_addrs[cnt_callstack++] =
+		(long *)ucontext->uc_mcontext.gregs[REG_RIP];
+#else
 	layout *ebp = ucontext->uc_mcontext.gregs[REG_EBP];
 	callstack_addrs[cnt_callstack++] =
 		(long *)ucontext->uc_mcontext.gregs[REG_EIP];
+#endif
 	while (ebp) {
 		callstack_addrs[cnt_callstack++] = ebp->ret;
 		ebp = ebp->ebp;
@@ -674,8 +680,13 @@ void sighandler(int signum, siginfo_t *info, void *context)
 	if (cnt_callstack > 2) {
 		cnt_callstack -= 2;
 	} else {
+#if __x86_64__
+		callstack_addrs[2] = (long *)ucontext->uc_mcontext.gregs[REG_RIP];
+		callstack_addrs[3] = (long *)ucontext->uc_mcontext.gregs[REG_RSP];
+#else
 		callstack_addrs[2] = (long *)ucontext->uc_mcontext.gregs[REG_EIP];
 		callstack_addrs[3] = (long *)ucontext->uc_mcontext.gregs[REG_ESP];
+#endif
 		cnt_callstack = 2;
 	}
 #endif
@@ -767,6 +778,24 @@ void sighandler(int signum, siginfo_t *info, void *context)
 	fprintf_fd(fd_cs, "cpsr = 0x%08x\n", ucontext->uc_mcontext.arm_cpsr);
 #else
 	fprintf_fd(fd_cs, "\n%s\n", CRASH_REGISTERINFO_TITLE);
+	
+#if __x86_64__
+	fprintf_fd(fd_cs,
+			"rdi = 0x%08x, rsi = 0x%08x\nrbp = 0x%08x, esp = 0x%08x\n",
+			ucontext->uc_mcontext.gregs[REG_RDI],
+			ucontext->uc_mcontext.gregs[REG_RSI],
+			ucontext->uc_mcontext.gregs[REG_RBP],
+			ucontext->uc_mcontext.gregs[REG_RSP]);
+	fprintf_fd(fd_cs,
+			"rax = 0x%08x, rbx = 0x%08x\nrcx = 0x%08x, rdx = 0x%08x\n",
+			ucontext->uc_mcontext.gregs[REG_RAX],
+			ucontext->uc_mcontext.gregs[REG_RBX],
+			ucontext->uc_mcontext.gregs[REG_RCX],
+			ucontext->uc_mcontext.gregs[REG_RDX]);
+	fprintf_fd(fd_cs,
+			"rip = 0x%08x\n",
+			ucontext->uc_mcontext.gregs[REG_RIP]);
+#else
 	fprintf_fd(fd_cs,
 			"gs  = 0x%08x, fs  = 0x%08x\nes  = 0x%08x, ds  = 0x%08x\n",
 			ucontext->uc_mcontext.gregs[REG_GS],
@@ -788,6 +817,8 @@ void sighandler(int signum, siginfo_t *info, void *context)
 	fprintf_fd(fd_cs,
 			"eip = 0x%08x\n",
 			ucontext->uc_mcontext.gregs[REG_EIP]);
+#endif
+
 #endif
 	/* print meminfo */
 	fprintf_fd(fd_cs, "\n%s\n", CRASH_MEMINFO_TITLE);
