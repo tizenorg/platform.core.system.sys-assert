@@ -7,6 +7,7 @@ License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
 Source1001:	%{name}.manifest
 BuildRequires:  pkgconfig(glib-2.0)
+BuildRequires:  pkgconfig(libunwind)
 BuildRequires:  cmake
 
 %description
@@ -17,7 +18,7 @@ System Assert.
 cp %{SOURCE1001} .
 
 %build
-export CFLAGS+=" -fPIC"
+export CFLAGS+=" -fPIC -lunwind"
 %ifarch %{arm}
     export CFLAGS+=" -DTARGET"
 %endif

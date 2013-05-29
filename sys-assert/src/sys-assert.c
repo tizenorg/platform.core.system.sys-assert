@@ -655,7 +655,7 @@ void sighandler(int signum, siginfo_t *info, void *context)
 		close(fd);
 	}
 #ifdef TARGET
-	cnt_callstack = backtrace(callstack_addrs, CALLSTACK_SIZE);
+	cnt_callstack = unw_backtrace(callstack_addrs, CALLSTACK_SIZE);
 	if (cnt_callstack > 2) {
 		cnt_callstack -= 2;
 	} else {
