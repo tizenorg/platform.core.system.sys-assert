@@ -1,5 +1,5 @@
 Name:       sys-assert
-Summary:    libsys-assert (shared object).
+Summary:    Libsys-assert (shared object)
 Version:    0.3.3
 Release:    5
 Group:      Framework/system
