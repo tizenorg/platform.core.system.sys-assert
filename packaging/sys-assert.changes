@@ -1,3 +1,6 @@
+* Wed Jun 05 2013 Xavier Roche <xavrock.os@gmail.com> accepted/tizen/20130604.172001@441fcdd
+- Replace manifest with default floor
+
 * Tue Jun 04 2013 Baptiste DURAND <baptiste.durand@eurogiciel.fr> accepted/tizen/20130520.101311@f35ef28
 - Fix spec file according to RPMLINT Rules
 
