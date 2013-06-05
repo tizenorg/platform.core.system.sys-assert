@@ -1,17 +1,8 @@
 <manifest>
 	<define>
 		<domain name="sys-assert"/>
-		<provide>
-			<label name="sys-assert::core"/>
-		</provide>
 	</define>
 	<request>
-		<domain name="sys-assert"/>
+		<domain name="_"/>
 	</request>
-	<assign>
-		<filesystem path="/usr/lib/libsys-assert.so" label="_" exec_label="none"/>
-		<filesystem path="/etc/ld.so.preload" label="_" exec_label="none"/>
-		<filesystem path="/usr/bin/coredumpctrl.sh" label="_" exec_label="none"/>
-		<filesystem path="/opt/etc/.debugmode" label="_" exec_label="none"/>
-	</assign>
 </manifest>
