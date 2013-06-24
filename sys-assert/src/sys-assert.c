@@ -36,6 +36,7 @@
 #include <dirent.h>
 #include <time.h>
 #include <syslog.h>
+#include <libunwind.h>
 /* for PR_SET_DUMPABLE */
 #include <sys/prctl.h>
 #include "sys-assert.h"
@@ -220,7 +221,7 @@ static int trace_symbols(void *const *array, int size, struct addr_node *start, 
 				fd = open(strchr(info_funcs.dli_fname, '/'), O_RDONLY);
 				if (fd < 0) {
 					fprintf_fd(fd_cs,
-							"can't open %2d: (%p) [%s] + %p\n",
+							"%2d: (%p) [%s] + %p\n",
 							cnt, array[cnt],
 							info_funcs.dli_fname, offset_addr);
 					continue;
@@ -506,7 +507,6 @@ static void print_signal_info(const siginfo_t *info, int fd)
 			fprintf_fd(fd,
 					"      signal sent by tkill (sent by pid %d, uid %d)\n",
 				info->si_pid, info->si_uid);
-			fprintf_fd(fd, "      TIMER: %d\n", SI_TIMER);
 			break;
 #endif
 #ifdef SI_USER
