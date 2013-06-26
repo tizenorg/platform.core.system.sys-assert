@@ -100,6 +100,7 @@ static char *fgets_fd(char *str, int len, int fd)
 	*cs = '\0';
 	return (num == 0 && cs == str) ? NULL : str;
 }
+
 /* WARNING : formatted string buffer is limited to 1024 byte */
 static int fprintf_fd(int fd, const char *fmt, ...)
 {
@@ -113,6 +114,7 @@ static int fprintf_fd(int fd, const char *fmt, ...)
 	va_end(args);
 	return n;
 }
+
 static char *remove_path(const char *cmd)
 {
 	char *cp;
@@ -126,6 +128,7 @@ static char *remove_path(const char *cmd)
 	}
 	return np;
 }
+
 static char *get_fpath(long *value, struct addr_node *start)
 {
 	struct addr_node *t_node;
@@ -135,19 +138,18 @@ static char *get_fpath(long *value, struct addr_node *start)
 		return NULL;
 	t_node = start;
 	n_node = t_node->next;
-	while (t_node) {
+	while (n_node) {
 		if (t_node->endaddr <= value) {
-			/* next node */
-			if (n_node == NULL)
-				return NULL;
 			t_node = n_node;
 			n_node = n_node->next;
-		} else if (t_node->startaddr <= value)
+		} else if (t_node->startaddr <= value) {
 			return t_node->fpath;
-		else
-			return NULL;
+		} else
+			break;
 	}
+	return NULL;
 }
+
 static long *get_start_addr(long *value, struct addr_node *start)
 {
 	struct addr_node *t_node;
@@ -157,19 +159,18 @@ static long *get_start_addr(long *value, struct addr_node *start)
 		return NULL;
 	t_node = start;
 	n_node = t_node->next;
-	while (t_node) {
+	while (n_node) {
 		if (t_node->endaddr <= value) {
-			/* next node */
-			if (n_node == NULL)
-				return NULL;
 			t_node = n_node;
 			n_node = n_node->next;
-		} else if (t_node->startaddr <= value)
+		} else if (t_node->startaddr <= value) {
 			return t_node->startaddr;
-		else
-			return NULL;
+		} else
+			break;
 	}
+	return NULL;
 }
+
 /* get function symbol from elf */
 static int trace_symbols(void *const *array, int size, struct addr_node *start, int fd_cs)
 {
@@ -177,16 +178,11 @@ static int trace_symbols(void *const *array, int size, struct addr_node *start, 
 	Elf32_Ehdr elf_h;
 	Elf32_Shdr *s_headers;
 	Elf32_Sym *symtab_entry;
-	int i;
-	int cnt;
-	int fd;
-	int ret;
+	int i, cnt, fd, ret;
+	unsigned int addr, start_addr, offset_addr;
+	unsigned int strtab_index = 0;
+	unsigned int symtab_index = 0;
 	int num_st = 0;
-	unsigned int addr;
-	unsigned int start_addr;
-	unsigned int offset_addr;
-	int strtab_index = 0;
-	int symtab_index = 0;
 	int found_symtab = 0;
 
 	for (cnt = 0; cnt < size; cnt++) {
@@ -228,7 +224,9 @@ static int trace_symbols(void *const *array, int size, struct addr_node *start, 
 				}
 			}
 			ret = read(fd, &elf_h, sizeof(Elf32_Ehdr));
-			if (ret < sizeof(Elf32_Ehdr) || elf_h.e_shnum <= 0) {
+			if (ret < sizeof(Elf32_Ehdr) ||
+					elf_h.e_shnum <= 0 ||
+					SHN_LORESERVE < elf_h.e_shnum) {
 				fprintf_fd(fd_cs, "%2d: (%p) [%s] + %p\n",
 						cnt, array[cnt], info_funcs.dli_fname, offset_addr);
 				close(fd);
@@ -695,7 +693,7 @@ void sighandler(int signum, siginfo_t *info, void *context)
 		fprintf(stderr, "[sys-assert]can't open %s\n", CMDLINE_PATH);
 		return;
 	} else {
-		readnum = read(fd, exepath, sizeof(exepath));
+		readnum = read(fd, exepath, sizeof(exepath) - 1);
 		close(fd);
 		if (readnum <= 0) {
 			fprintf(stderr, "[sys-assert]can't get cmdline\n");
