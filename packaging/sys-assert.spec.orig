@@ -7,7 +7,13 @@ License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
 Source1001:	%{name}.manifest
 BuildRequires:  pkgconfig(glib-2.0)
+BuildRequires:  pkgconfig(libunwind)
 BuildRequires:  cmake
+<<<<<<< HEAD
+=======
+Requires(post): coreutils
+Requires(post): smack-utils
+>>>>>>> c84e3b6... prevent out of bounds write
 
 %description
 System Assert.
@@ -17,7 +23,7 @@ System Assert.
 cp %{SOURCE1001} .
 
 %build
-export CFLAGS+=" -fPIC"
+export CFLAGS+=" -fPIC -lunwind"
 %ifarch %{arm}
     export CFLAGS+=" -DTARGET"
 %endif
@@ -29,7 +35,6 @@ make %{?_smp_mflags}
 %make_install
 mkdir -p %{buildroot}/opt/share/crash/info
 
-<<<<<<< HEAD
 %post -p <lua>
 --Do not run this script inside the build environemt, it will cause issues.
 if posix.stat("/.build") == nil then
@@ -40,10 +45,6 @@ if posix.stat("/.build") == nil then
         posix.chmod("%{_sysconfdir}/ld.so.preload", 644)
     end
 end
-=======
-chown root:crash /opt/share/crash
-chmod 750 /opt/share/crash
->>>>>>> 536502d... remove core-launcher
 
 
 %postun
