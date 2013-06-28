@@ -1,0 +1,9 @@
+Code-Review+1: Patrick McCarty <patrick.mccarty@linux.intel.com>
+Code-Review+2: Anas Nashif <anas.nashif@intel.com>
+Verified+1: Anas Nashif <anas.nashif@intel.com>
+Code-Review+1: William Douglas <william.douglas@intel.com>
+Submitted-by: Anas Nashif <anas.nashif@intel.com>
+Submitted-at: Fri, 28 Jun 2013 13:17:01 -0700
+Reviewed-on: https://review.tizen.org/gerrit/4539
+Project: platform/core/system/sys-assert
+Branch: refs/heads/tizen
