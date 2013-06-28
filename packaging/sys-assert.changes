@@ -1,3 +1,12 @@
+* Fri Jun 28 2013 Anas Nashif <anas.nashif@intel.com> accepted/tizen/20130611.123358@59a542a
+- Cleanup spec
+- - Use lua instead of shell for %post to minimize dependencies
+- - Split library package
+- - Reset group, licenses
+- - Do not create directories as part of %post
+- - Reset git file permissions
+- Signed-off-by: Anas Nashif <anas.nashif@intel.com>
+
 * Wed Jun 05 2013 Xavier Roche <xavrock.os@gmail.com> accepted/tizen/20130604.172001@441fcdd
 - Replace manifest with default floor
 
