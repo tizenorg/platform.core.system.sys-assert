@@ -5,6 +5,7 @@ Release:    5
 Group:      Framework/system
 License:    Apache License, Version 2.0
 Source0:    %{name}-%{version}.tar.gz
+Source1001: 	sys-assert.manifest
 
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  cmake
@@ -15,6 +16,7 @@ libsys-assert (shared object).
 
 %prep
 %setup -q
+cp %{SOURCE1001} .
 
 %build
 export CFLAGS+=" -fPIC"
@@ -51,7 +53,7 @@ if [ ! -d /.build ]; then
 fi
 
 %files
-%manifest sys-assert.manifest
+%manifest %{name}.manifest
 %{_bindir}/coredumpctrl.sh
 %{_libdir}/libsys-assert.so
 /opt/etc/.debugmode
