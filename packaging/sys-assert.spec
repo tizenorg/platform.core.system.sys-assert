@@ -11,13 +11,6 @@ BuildRequires:  cmake
 %description
 System Assert.
 
-%package -n libsys-assert
-Summary:    System Assert Library
-%description -n libsys-assert
-System Assert Library.
-
-This package provides the library for %name.
-
 %prep
 %setup -q
 
@@ -38,7 +31,7 @@ mkdir -p %{buildroot}/opt/share/crash/info
 --Do not run this script inside the build environemt, it will cause issues.
 if posix.stat("/.build") == nil then
     local f = assert(io.open("/etc/ld.so.preload", "a"))
-    local t = f:write("%{_libdir}/libsys-assert.so\n")
+    local t = f:write("%{_libdir}/libsys-assert.so")
     f:close()
     posix.chmod("/etc/ld.so.preload", 644)
 end
@@ -49,11 +42,6 @@ end
 #that tries to preload that lib
 #
 
-%post -n libsys-assert -p /sbin/ldconfig
-
-%postun -n libsys-assert -p /sbin/ldconfig
-
-
 %files
 %manifest sys-assert.manifest
 %attr(775,root,crash) /opt/share/crash
@@ -62,7 +50,5 @@ end
 %{_bindir}/coredumpctrl.sh
 /opt/etc/.debugmode
 /usr/lib/sysctl.d/sys-assert.conf
-
-%files -n libsys-assert
 %{_libdir}/libsys-assert.so
 

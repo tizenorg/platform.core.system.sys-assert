@@ -1,3 +1,6 @@
+* Fri Jun 28 2013 Anas Nashif <anas.nashif@intel.com> accepted/tizen/20130628.202129@fc36a2f
+- Do not split libsys-assert
+
 * Fri Jun 28 2013 Anas Nashif <anas.nashif@intel.com> accepted/tizen/20130611.123358@59a542a
 - Cleanup spec
 - - Use lua instead of shell for %post to minimize dependencies
