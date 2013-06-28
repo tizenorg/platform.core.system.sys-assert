@@ -1,17 +1,22 @@
 Name:       sys-assert
-Summary:    Libsys-assert (shared object)
+Summary:    System Assert
 Version:    0.3.3
 Release:    5
-Group:      Framework/system
-License:    Apache License, Version 2.0
+Group:      System/Debug
+License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
-
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  cmake
-Requires(post): coreutils
 
 %description
-libsys-assert (shared object).
+System Assert.
+
+%package -n libsys-assert
+Summary:    System Assert Library
+%description -n libsys-assert
+System Assert Library.
+
+This package provides the library for %name.
 
 %prep
 %setup -q
@@ -26,34 +31,38 @@ export CFLAGS+=" -fPIC"
 make %{?_smp_mflags}
 
 %install
-rm -rf %{buildroot}
 %make_install
-mkdir -p %{buildroot}/usr/share/license
-cp LICENSE.APLv2 %{buildroot}/usr/share/license/%{name}
+mkdir -p %{buildroot}/opt/share/crash/info
 
-%post
-/sbin/ldconfig
-mkdir -p /opt/share/crash/info
-chown root:crash /opt/share/crash/info
-chmod 775 /opt/share/crash/info
+%post -p <lua>
+--Do not run this script inside the build environemt, it will cause issues.
+if posix.stat("/.build") == nil then
+    local f = assert(io.open("/etc/ld.so.preload", "a"))
+    local t = f:write("%{_libdir}/libsys-assert.so\n")
+    f:close()
+    posix.chmod("/etc/ld.so.preload", 644)
+end
 
-chown root:crash /opt/share/crash
-chmod 775 /opt/share/crash
 
-if [ -f %{_libdir}/rpm-plugins/msm.so ]; then
-	find /opt/share/crash -print0 | xargs -0 chsmack -a 'sys-assert::core'
-	find /opt/share/crash -type d -print0 | xargs -0 chsmack -t
-fi
+%postun
+# TBD: we need to remove the above, otherwise we will fail on everything
+#that tries to preload that lib
+#
 
-if [ ! -d /.build ]; then
-	echo "%{_libdir}/libsys-assert.so" >> /etc/ld.so.preload
-	chmod 644 /etc/ld.so.preload
-fi
+%post -n libsys-assert -p /sbin/ldconfig
+
+%postun -n libsys-assert -p /sbin/ldconfig
+
 
 %files
 %manifest sys-assert.manifest
+%attr(775,root,crash) /opt/share/crash
+%attr(775,root,crash) /opt/share/crash/info
+%license LICENSE.APLv2
 %{_bindir}/coredumpctrl.sh
-%{_libdir}/libsys-assert.so
 /opt/etc/.debugmode
-/usr/share/license/%{name}
 /usr/lib/sysctl.d/sys-assert.conf
+
+%files -n libsys-assert
+%{_libdir}/libsys-assert.so
+
