@@ -1,0 +1,8 @@
+Change-Id: Iec13d54d1a28cbe8ebfd6006a987870261d3dc2e
+Code-Review+2: Anas Nashif <anas.nashif@intel.com>
+Verified+1: Anas Nashif <anas.nashif@intel.com>
+Submitted-by: Anas Nashif <anas.nashif@intel.com>
+Submitted-at: Sat, 29 Jun 2013 06:20:45 -0700
+Reviewed-on: https://review.tizen.org/gerrit/5037
+Project: platform/core/system/sys-assert
+Branch: refs/heads/tizen
