@@ -42,10 +42,10 @@ chmod 775 /opt/share/crash/info
 chown root:crash /opt/share/crash
 chmod 775 /opt/share/crash
 
-if [ -f %{_libdir}/rpm-plugins/msm.so ]; then
+#if [ -f %{_libdir}/rpm-plugins/msm.so ]; then
 #	find /opt/share/crash -print0 | xargs -0 chsmack -a 'sys-assert::core'
 #	find /opt/share/crash -type d -print0 | xargs -0 chsmack -t
-fi
+#fi
 
 if [ ! -d /.build ]; then
 	echo "%{_libdir}/libsys-assert.so" >> /etc/ld.so.preload
