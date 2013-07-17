@@ -5,6 +5,7 @@ Release:    5
 Group:      System/Debug
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
+Source1001:	%{name}.manifest
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  cmake
 
@@ -13,6 +14,7 @@ System Assert.
 
 %prep
 %setup -q
+cp %{SOURCE1001} .
 
 %build
 export CFLAGS+=" -fPIC"
@@ -43,7 +45,7 @@ end
 #
 
 %files
-%manifest sys-assert.manifest
+%manifest %{name}.manifest
 %attr(775,root,crash) /opt/share/crash
 %attr(775,root,crash) /opt/share/crash/info
 %license LICENSE.APLv2
