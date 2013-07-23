@@ -1,13 +1,13 @@
-Name:       sys-assert
-Summary:    System Assert
-Version:    0.3.3
-Release:    5
-Group:      System/Debug
-License:    Apache-2.0
-Source0:    %{name}-%{version}.tar.gz
-Source1001:	%{name}.manifest
-BuildRequires:  pkgconfig(glib-2.0)
+Name:           sys-assert
+Version:        0.3.3
+Release:        0
+License:        Apache-2.0
+Summary:        System Assert
+Group:          System/Debug
+Source0:        %{name}-%{version}.tar.gz
+Source1001:     %{name}.manifest
 BuildRequires:  cmake
+BuildRequires:  pkgconfig(glib-2.0)
 
 %description
 System Assert.
