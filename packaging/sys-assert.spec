@@ -32,10 +32,12 @@ mkdir -p %{buildroot}/opt/share/crash/info
 %post -p <lua>
 --Do not run this script inside the build environemt, it will cause issues.
 if posix.stat("/.build") == nil then
-    local f = assert(io.open("/etc/ld.so.preload", "a"))
-    local t = f:write("%{_libdir}/libsys-assert.so")
-    f:close()
-    posix.chmod("/etc/ld.so.preload", 644)
+    if arg[2] == nil then
+        local f = assert(io.open("%{_sysconfdir}/ld.so.preload", "a"))
+        local t = f:write("%{_libdir}/libsys-assert.so")
+        f:close()
+        posix.chmod("%{_sysconfdir}/ld.so.preload", 644)
+    end
 end
 
 
@@ -51,6 +53,6 @@ end
 %license LICENSE.APLv2
 %{_bindir}/coredumpctrl.sh
 /opt/etc/.debugmode
-/usr/lib/sysctl.d/sys-assert.conf
+%{_libdir}/sysctl.d/sys-assert.conf
 %{_libdir}/libsys-assert.so
 
