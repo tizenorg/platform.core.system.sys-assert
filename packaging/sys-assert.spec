@@ -2,7 +2,7 @@ Name:       sys-assert
 Summary:    System Assert
 Version:    0.3.3
 Release:    5
-Group:      System/Debug
+Group:      System/Other
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
 Source1001:	%{name}.manifest
@@ -53,6 +53,6 @@ end
 %license LICENSE.APLv2
 %{_bindir}/coredumpctrl.sh
 /opt/etc/.debugmode
-%{_libdir}/sysctl.d/sys-assert.conf
+/usr/lib/sysctl.d/sys-assert.conf
 %{_libdir}/libsys-assert.so
 

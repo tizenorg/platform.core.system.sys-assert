@@ -1,3 +1,8 @@
+* Wed Aug 14 2013 Patrick McCarty <patrick.mccarty@linux.intel.com> fac4188
+- packaging: Fix the build on x86_64; resolve rpmlint error
+- Enhance %post script to handle upgrade vs. first installation gracefully (TIVI-1530)
+- Revert to the default floor manifest
+
 * Fri Jun 28 2013 Anas Nashif <anas.nashif@intel.com> accepted/tizen/20130628.202129@fc36a2f
 - Do not split libsys-assert
 
