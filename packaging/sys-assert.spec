@@ -9,7 +9,6 @@ Source1001:	%{name}.manifest
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(libunwind)
 BuildRequires:  cmake
-Requires(post): smack-utils
 
 %description
 System Assert.
