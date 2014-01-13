@@ -30,22 +30,16 @@ make %{?_smp_mflags}
 %make_install
 mkdir -p %{buildroot}/opt/share/crash/info
 
-%post -p <lua>
---Do not run this script inside the build environemt, it will cause issues.
-if posix.stat("/.build") == nil then
-    if arg[2] == 1 then
-        local f = assert(io.open("%{_sysconfdir}/ld.so.preload", "a"))
-        local t = f:write("%{_libdir}/libsys-assert.so")
-        f:close()
-        posix.chmod("%{_sysconfdir}/ld.so.preload", 644)
-    end
-end
-
+%post
+if [ ! -d /.build ]; then
+       echo "%{_libdir}/libsys-assert.so" >> %{_sysconfdir}/ld.so.preload
+       chmod 644 %{_sysconfdir}/ld.so.preload
+fi
+/sbin/ldconfig
 
 %postun
-# TBD: we need to remove the above, otherwise we will fail on everything
-#that tries to preload that lib
-#
+grep -v "%{_libdir}/libsys-assert.so" %{_sysconfdir}/ld.so.preload > lib2.txt  ;  mv lib2.txt %{_sysconfdir}/ld.so.preload
+/sbin/ldconfig
 
 %files
 %manifest %{name}.manifest
