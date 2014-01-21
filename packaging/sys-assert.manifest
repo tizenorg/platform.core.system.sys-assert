@@ -1,5 +1,9 @@
 <manifest>
-        <request>
-                <domain name="_" />
-        </request>
+  <request>
+    <domain name="_" />
+  </request>
+  <assign>
+    <filesystem path="/opt/share/crash" label="System::Log" />
+    <filesystem path="/opt/share/crash/info" label="System::Log" />
+  </assign>
 </manifest>
