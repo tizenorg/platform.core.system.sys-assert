@@ -32,7 +32,12 @@ mkdir -p %{buildroot}/opt/share/crash/info
 
 %post
 if [ ! -d /.build ]; then
-       echo "%{_libdir}/libsys-assert.so" >> %{_sysconfdir}/ld.so.preload
+       orig="%{_libdir}/libsys-assert.so"
+       pattern=$(echo $orig | sed -e 's|/|\\/|g')
+       ret=$(sed -n "/${pattern}/p"  %{_sysconfdir}/ld.so.preload)
+       if [ -z "$ret" ]; then
+          echo "%{_libdir}/libsys-assert.so" >> %{_sysconfdir}/ld.so.preload
+       fi
        chmod 644 %{_sysconfdir}/ld.so.preload
 fi
 /sbin/ldconfig
