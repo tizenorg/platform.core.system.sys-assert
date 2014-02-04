@@ -1,0 +1,8 @@
+Code-Review+2: Patrick McCarty <patrick.mccarty@linux.intel.com>
+Code-Review+1: Lukasz Stelmach <l.stelmach@samsung.com>
+Verified+1: Ravi Nanjundappa
+Submitted-by: Karol Lewandowski <k.lewandowsk@samsung.com>
+Submitted-at: Tue, 04 Feb 2014 10:01:36 -0800
+Reviewed-on: https://review.tizen.org/gerrit/15928
+Project: platform/core/system/sys-assert
+Branch: refs/heads/tizen
