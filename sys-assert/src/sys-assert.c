@@ -39,6 +39,7 @@
 #include <libunwind.h>
 /* for PR_SET_DUMPABLE */
 #include <sys/prctl.h>
+#include <tzplatform_config.h>
 #include "sys-assert.h"
 
 #define CMDLINE_PATH "/proc/self/cmdline"
@@ -48,9 +49,8 @@
 #define VERINFO_PATH "/etc/info.ini"
 #define STATUS_PATH "/proc/self/status"
 
-#define CRASH_INFO_PATH "/opt/share/crash/info"
-#define CRASH_REPORT_PATH   "/opt/usr/share/crash/report"
-#define CRASH_NOTI_PATH	"/opt/share/crash/curbs.log"
+#define CRASH_INFO_PATH tzplatform_mkpath(TZ_SYS_SHARE,"crash/info")
+#define CRASH_NOTI_PATH	tzplatform_mkpath(TZ_SYS_SHARE,"crash/curbs.log")
 
 #define CRASH_CALLSTACKINFO_TITLE "Callstack Information"
 #define CRASH_CALLSTACKINFO_TITLE_E "End of Call Stack"
@@ -203,9 +203,9 @@ static int trace_symbols(void *const *array, int size, struct addr_node *start, 
 		 * so fix dli_fname here */
 		if (info_funcs.dli_fbase == (void *)BASE_LAUNCHPAD_ADDR
 				&&
-				(strncmp("/opt/apps/",
+				(strncmp(tzplatform_getenv(TZ_SYS_RW_APP),
 						 info_funcs.dli_fname,
-						 strlen("/opt/apps/")) == 0)) {
+						 strlen(tzplatform_getenv(TZ_SYS_RW_APP))) == 0)) {
 			info_funcs.dli_fname = get_fpath(array[cnt], start);
 			offset_addr = addr;
 		} else {
