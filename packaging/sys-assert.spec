@@ -9,6 +9,8 @@ Source1001:	%{name}.manifest
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(libunwind)
 BuildRequires:  cmake
+BuildRequires:	pkgconfig(libtzplatform-config)
+Requires:       libtzplatform-config
 
 %description
 System Assert.
@@ -23,12 +25,13 @@ export CFLAGS+=" -fPIC"
     export CFLAGS+=" -DTARGET"
 %endif
 
-%cmake .
+%cmake . -DTZ_SYS_ETC=%{TZ_SYS_ETC} \
+         -DTZ_SYS_SHARE=%{TZ_SYS_SHARE}
 make %{?_smp_mflags}
 
 %install
 %make_install
-mkdir -p %{buildroot}/opt/share/crash/info
+mkdir -p %{buildroot}%{TZ_SYS_SHARE}/crash/info
 
 %post
 if [ ! -d /.build ]; then
@@ -50,11 +53,11 @@ sed -i "/${pattern}/D" %{_sysconfdir}/ld.so.preload
 
 %files
 %manifest %{name}.manifest
-%attr(775,root,crash) /opt/share/crash
-%attr(775,root,crash) /opt/share/crash/info
+%attr(775,root,crash) %{TZ_SYS_SHARE}/crash
+%attr(775,root,crash) %{TZ_SYS_SHARE}/crash/info
 %license LICENSE.APLv2
 %{_bindir}/coredumpctrl.sh
-/opt/etc/.debugmode
+%{TZ_SYS_ETC}/.debugmode
 /usr/lib/sysctl.d/sys-assert.conf
 %{_libdir}/libsys-assert.so
 

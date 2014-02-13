@@ -29,15 +29,18 @@ if [ "$MODE" = "set" ]; then
 	esac
 fi
 
+source /etc/tizen-platform.conf
+file="${TZ_SYS_ETC}/.coredump"
+
 if [ "$MODE" = "set" ]; then
 	if [ "$VAL" = "1" ] ; then
-		touch /opt/etc/.coredump 2>/dev/null
+		touch "$file" 2>/dev/null
 	elif [ "$VAL" = "0" ] ; then
-		rm -f /opt/etc/.coredump 2>/dev/null
+		rm -f "$file" 2>/dev/null
 	fi
 	echo "You must reboot this target to apply the change!"
 else
-	if [ -e "/opt/etc/.coredump" ]; then
+	if [ -e "$file" ]; then
 		echo 1
 	else
 		echo 0
