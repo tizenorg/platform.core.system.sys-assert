@@ -9,7 +9,7 @@ SET(PREFIX ${CMAKE_INSTALL_PREFIX})
 SET(LIBDIR "\${prefix}/lib")
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(pkgs REQUIRED libunwind)
+pkg_check_modules(pkgs REQUIRED libunwind libtzplatform-config)
 
 IF("${CMAKE_BUILD_TYPE}" STREQUAL "")
 	SET(CMAKE_BUILD_TYPE "Release")
