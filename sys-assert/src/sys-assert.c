@@ -653,6 +653,16 @@ void sighandler(int signum, siginfo_t *info, void *context)
 		close(fd);
 	}
 #ifdef TARGET
+#ifdef __aarch64__
+	cnt_callstack = backtrace(callstack_addrs, CALLSTACK_SIZE);
+	if (cnt_callstack > 2) {
+		cnt_callstack -= 2;
+	} else {
+		callstack_addrs[2] = (long *)ucontext->uc_mcontext.pc;
+		callstack_addrs[3] = (long *)ucontext->uc_mcontext.sp;
+		cnt_callstack = 2;
+	}
+#else
 	cnt_callstack = unw_backtrace(callstack_addrs, CALLSTACK_SIZE);
 	if (cnt_callstack > 2) {
 		cnt_callstack -= 2;
@@ -661,6 +671,7 @@ void sighandler(int signum, siginfo_t *info, void *context)
 		callstack_addrs[3] = (long *)ucontext->uc_mcontext.arm_lr;
 		cnt_callstack = 2;
 	}
+#endif
 #else		/* i386 */
 #if __x86_64__
 	layout *ebp = ucontext->uc_mcontext.gregs[REG_RBP];
@@ -752,6 +763,19 @@ void sighandler(int signum, siginfo_t *info, void *context)
 	fsync(fd_cs);
 	/* print additional info */
 #ifdef TARGET
+#ifdef __aarch64__
+	fprintf_fd(fd_cs, "\n%s\n", CRASH_REGISTERINFO_TITLE);
+	int i;
+	for (i = 0; i < 31; ++i) {
+		fprintf_fd(fd_cs,
+				"x%d  = 0x%016x\n",
+				i, ucontext->uc_mcontext.regs[i]);
+	}
+
+	fprintf_fd(fd_cs, "sp = 0x%016x\n", ucontext->uc_mcontext.sp);
+	fprintf_fd(fd_cs, "pc = 0x%016x\n", ucontext->uc_mcontext.pc);
+	fprintf_fd(fd_cs, "pstate = 0x%016x\n", ucontext->uc_mcontext.pstate);
+#else
 	fprintf_fd(fd_cs, "\n%s\n", CRASH_REGISTERINFO_TITLE);
 	fprintf_fd(fd_cs,
 			"r0   = 0x%08x, r1   = 0x%08x\nr2   = 0x%08x, r3   = 0x%08x\n",
@@ -774,6 +798,7 @@ void sighandler(int signum, siginfo_t *info, void *context)
 			ucontext->uc_mcontext.arm_sp,
 			ucontext->uc_mcontext.arm_lr, ucontext->uc_mcontext.arm_pc);
 	fprintf_fd(fd_cs, "cpsr = 0x%08x\n", ucontext->uc_mcontext.arm_cpsr);
+#endif
 #else
 	fprintf_fd(fd_cs, "\n%s\n", CRASH_REGISTERINFO_TITLE);
 	
