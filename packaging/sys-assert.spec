@@ -21,7 +21,7 @@ cp %{SOURCE1001} .
 
 %build
 export CFLAGS+=" -fPIC"
-%ifarch %{arm}
+%ifarch %{arm} aarch64
     export CFLAGS+=" -DTARGET"
 %endif
 
