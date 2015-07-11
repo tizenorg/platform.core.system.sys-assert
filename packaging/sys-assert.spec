@@ -19,6 +19,8 @@ System Assert.
 %setup -q
 cp %{SOURCE1001} .
 
+%define SYS_ASSERT_ENABLE no
+
 %build
 export CFLAGS+=" -fPIC"
 %ifarch %{arm} aarch64
@@ -26,7 +28,8 @@ export CFLAGS+=" -fPIC"
 %endif
 
 %cmake . -DTZ_SYS_ETC=%{TZ_SYS_ETC} \
-         -DTZ_SYS_SHARE=%{TZ_SYS_SHARE}
+         -DTZ_SYS_SHARE=%{TZ_SYS_SHARE} \
+         -DSYS_ASSERT_ENABLE=%{SYS_ASSERT_ENABLE}
 make %{?_smp_mflags}
 
 %install
@@ -34,6 +37,7 @@ make %{?_smp_mflags}
 mkdir -p %{buildroot}%{TZ_SYS_SHARE}/crash/info
 
 %post
+%if %{?SYS_ASSERT_ENABLE} == yes
 if [ ! -d /.build ]; then
        orig="%{_libdir}/libsys-assert.so"
        pattern=$(echo $orig | sed -e 's|/|\\/|g')
@@ -43,12 +47,15 @@ if [ ! -d /.build ]; then
        fi
        chmod 644 %{_sysconfdir}/ld.so.preload
 fi
+%endif
 /sbin/ldconfig
 
 %postun
+%if %{?SYS_ASSERT_ENABLE} == yes
 orig="%{_libdir}/libsys-assert.so"
 pattern=$(echo $orig | sed -e 's|/|\\/|g')
 sed -i "/${pattern}/D" %{_sysconfdir}/ld.so.preload
+%endif
 /sbin/ldconfig
 
 %files
@@ -58,6 +65,9 @@ sed -i "/${pattern}/D" %{_sysconfdir}/ld.so.preload
 %license LICENSE.APLv2
 %{_bindir}/coredumpctrl.sh
 %{TZ_SYS_ETC}/.debugmode
-/usr/lib/sysctl.d/sys-assert.conf
 %{_libdir}/libsys-assert.so
+
+%if %{?SYS_ASSERT_ENABLE} == yes
+/usr/lib/sysctl.d/sys-assert.conf
+%endif
 
