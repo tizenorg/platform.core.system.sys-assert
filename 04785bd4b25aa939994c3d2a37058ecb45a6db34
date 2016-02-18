@@ -2,6 +2,15 @@ Verified+1: Taeyoung Kim <ty317.kim@samsung.com>
 Code-Review+2: Kunhoon Baik <knhoon.baik@samsung.com>
 Verified+1: Kunhoon Baik <knhoon.baik@samsung.com>
 Submitted-by: Taeyoung Kim <ty317.kim@samsung.com>
+Submitted-at: Fri, 10 Jul 2015 21:11:52 -0800
+Reviewed-on: https://review.tizen.org/gerrit/43618
+Project: platform/core/system/sys-assert
+Branch: refs/heads/tizen
+
+Verified+1: Taeyoung Kim <ty317.kim@samsung.com>
+Code-Review+2: Kunhoon Baik <knhoon.baik@samsung.com>
+Verified+1: Kunhoon Baik <knhoon.baik@samsung.com>
+Submitted-by: Taeyoung Kim <ty317.kim@samsung.com>
 Submitted-at: Fri, 10 Jul 2015 22:11:52 -0700
 Reviewed-on: https://review.tizen.org/gerrit/43618
 Project: platform/core/system/sys-assert
